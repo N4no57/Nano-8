@@ -5,6 +5,10 @@ uint8_t fetch_byte(const CPU *cpu, const uint16_t addr) {
     return cpu->memory.data[addr];
 }
 
+void set_byte(CPU *cpu, const uint16_t addr, const uint8_t value) {
+    cpu->memory.data[addr] = value;
+}
+
 void set_reg(CPU *cpu, const uint8_t reg, const uint8_t value) {
     switch (reg) {
         case 0x0: // R0
