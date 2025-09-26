@@ -9,7 +9,8 @@
 
 enum instruction {
     MOV_REG_REG = 0x00,
-    MOV_REG_IMM = 0x04
+    MOV_REG_IMM = 0x04,
+    HLT = 0x03,
 };
 
 typedef struct {
