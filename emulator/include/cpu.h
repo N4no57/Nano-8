@@ -16,7 +16,10 @@ enum instruction {
     MOV_ABS_REG = 0x14,
     MOV_IND_REG = 0x18,
     MOV_IDX_REG = 0x1C,
+    ADD_REG_REG = 0x01,
+    ADD_REG_IMM = 0x05,
     HLT = 0x03,
+    NOP = 0x13,
 };
 
 typedef struct {
