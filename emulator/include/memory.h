@@ -3,8 +3,10 @@
 
 #include <stdint.h>
 
+#define MEMORY_SIZE 0x10000
+
 typedef struct {
-    uint8_t data[1024 * 64];
+    uint8_t data[MEMORY_SIZE];
 } Memory;
 
 void memory_init(Memory *memory);
