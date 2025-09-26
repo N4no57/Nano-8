@@ -5,6 +5,13 @@
 #include "flags.h"
 #include "memory.h"
 
+#define MAX_PORTS 256
+
+enum instruction {
+    MOV_REG_REG = 0x00,
+    MOV_REG_IMM = 0x04
+};
+
 typedef struct {
     uint16_t PC;
     uint16_t SP;
@@ -13,10 +20,11 @@ typedef struct {
     flags FR;
 
     Memory memory;
-    uint8_t ports[256];
+    uint8_t ports[MAX_PORTS];
 } CPU;
 
 void CPU_init(CPU *cpu);
 void reset(CPU *cpu);
+void execute(CPU *cpu);
 
 #endif //CPU_H
