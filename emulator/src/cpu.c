@@ -88,9 +88,10 @@ void reset(CPU *cpu) {
 }
 
 void execute(CPU *cpu) {
+    uint8_t registers;
     uint8_t dst;
-    uint8_t value;
     uint8_t src;
+    uint8_t value;
     uint8_t low;
     uint8_t high;
     uint16_t address;
@@ -98,7 +99,7 @@ void execute(CPU *cpu) {
         const uint8_t instruction = fetch_byte(cpu, cpu->PC++);
         switch (instruction) {
             case MOV_REG_REG: // MOV Rdest, Rsrc
-                const uint8_t registers = fetch_byte(cpu, cpu->PC++);
+                registers = fetch_byte(cpu, cpu->PC++);
                 src = read_reg(cpu, registers & 0x0F);
                 set_reg(cpu, (registers & 0xF0) >> 4, src);
                 break;
@@ -165,8 +166,22 @@ void execute(CPU *cpu) {
                 value = read_reg(cpu, src >> 4);
                 set_byte(cpu, address, value);
                 break;
+            case ADD_REG_REG:
+                registers = fetch_byte(cpu, cpu->PC++);
+                const int8_t val1 = (int8_t)read_reg(cpu, registers & 0x0F);
+                const int8_t val2 = (int8_t)read_reg(cpu, (registers & 0xF0) >> 4);
+                const uint16_t sum = (uint16_t)val1 + (uint16_t)val2;
+                cpu->FR.Z = sum == 0;
+                cpu->FR.N = (sum & 0x80) != 0;
+                cpu->FR.C = sum > 255;
+                if (val1 > 0 && val2 > 0) cpu->FR.O = (sum & 0x80) != 0;
+                else if (val1 < 0 && val2 < 0) cpu->FR.O = (sum & 0x80) == 0;
+                set_reg(cpu, (registers & 0xF0) >> 4, sum);
+                break;
             case HLT:
                 return;
+            case NOP:
+                break;
             default:
                 printf("Instruction not handled\nOpcode: %02x", instruction);
                 return;
