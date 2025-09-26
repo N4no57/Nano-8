@@ -72,7 +72,6 @@ uint8_t read_reg(const CPU *cpu, const uint8_t reg) {
 
 void CPU_init(CPU *cpu) {
     memory_init(&cpu->memory);
-    reset(cpu);
     memset(&cpu->ports, 0, sizeof(cpu->ports));
 }
 
@@ -81,6 +80,11 @@ void reset(CPU *cpu) {
     cpu->PC = 0xFFF0; // set PC to reset vector location
     cpu->SP = cpu->BP = 0x0100; // SP and BP set to arbitrary values for testing
     cpu->FR.flags = 0x0;
+    // get jump address
+    const uint8_t low = fetch_byte(cpu, cpu->PC++);
+    const uint8_t high = fetch_byte(cpu, cpu->PC++);
+    const uint16_t address = ((uint16_t)high << 8) | low;
+    cpu->PC = address;
 }
 
 void execute(CPU *cpu) {
