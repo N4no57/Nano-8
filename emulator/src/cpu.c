@@ -1,5 +1,6 @@
 #include "../include/cpu.h"
 #include <string.h>
+#include <stdio.h>
 
 uint8_t fetch_byte(const CPU *cpu, const uint16_t addr) {
     return cpu->memory.data[addr];
@@ -83,23 +84,88 @@ void reset(CPU *cpu) {
 }
 
 void execute(CPU *cpu) {
+    uint8_t dst;
+    uint8_t value;
+    uint8_t src;
+    uint8_t low;
+    uint8_t high;
+    uint16_t address;
     while (1) {
         const uint8_t instruction = fetch_byte(cpu, cpu->PC++);
         switch (instruction) {
             case MOV_REG_REG: // MOV Rdest, Rsrc
                 const uint8_t registers = fetch_byte(cpu, cpu->PC++);
-                const uint8_t src = read_reg(cpu, registers & 0x0F);
-                set_reg(cpu, registers & 0xF0, src);
-            break;
+                src = read_reg(cpu, registers & 0x0F);
+                set_reg(cpu, (registers & 0xF0) >> 4, src);
+                break;
             case MOV_REG_IMM: // MOV Rdest, imm8
-                const uint8_t dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                const uint8_t value = fetch_byte(cpu, cpu->PC++);
+                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
+                value = fetch_byte(cpu, cpu->PC++);
                 set_reg(cpu, dst, value);
-            break;
-            case 0x03:
+                break;
+            case MOV_REG_ABS: // MOV Rdest, imm16
+                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
+                low = fetch_byte(cpu, cpu->PC++);
+                high = fetch_byte(cpu, cpu->PC++);
+                address = ((uint16_t)high << 8) | low;
+                value = fetch_byte(cpu, address);
+                set_reg(cpu, dst, value);
+                break;
+            case MOV_REG_IND:
+                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
+                src = fetch_byte(cpu, cpu->PC++);
+                low = read_reg(cpu, src & 0x0F);
+                high = read_reg(cpu, (src & 0xF0) >> 4);
+                address = ((uint16_t)high << 8) | low;
+                value = fetch_byte(cpu, address);
+                set_reg(cpu, dst, value);
+                break;
+            case MOV_REG_IDX:
+                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
+                src = fetch_byte(cpu, cpu->PC++);
+                low = read_reg(cpu, src & 0x0F);
+                high = read_reg(cpu, (src & 0xF0) >> 4);
+                address = ((uint16_t)high << 8) | low;
+                low = fetch_byte(cpu, cpu->PC++);
+                high = fetch_byte(cpu, cpu->PC++);
+                address += ((uint16_t)high << 8) | low;
+                value = fetch_byte(cpu, address);
+                set_reg(cpu, dst, value);
+                break;
+            case MOV_ABS_REG:
+                low = fetch_byte(cpu, cpu->PC++);
+                high = fetch_byte(cpu, cpu->PC++);
+                address = ((uint16_t)high << 8) | low;
+                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
+                value = read_reg(cpu, src >> 4);
+                set_byte(cpu, address, value);
+                break;
+            case MOV_IND_REG:
+                dst = fetch_byte(cpu, cpu->PC++);
+                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
+                low = read_reg(cpu, dst & 0x0F);
+                high = read_reg(cpu, (dst & 0xF0) >> 4);
+                address = ((uint16_t)high << 8) | low;
+                value = read_reg(cpu, src >> 4);
+                set_byte(cpu, address, value);
+                break;
+            case MOV_IDX_REG:
+                dst = fetch_byte(cpu, cpu->PC++);
+                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
+                low = read_reg(cpu, dst & 0x0F);
+                high = read_reg(cpu, (dst & 0xF0) >> 4);
+                address = ((uint16_t)high << 8) | low;
+                low = fetch_byte(cpu, cpu->PC++);
+                high = fetch_byte(cpu, cpu->PC++);
+                address += ((uint16_t)high << 8) | low;
+                value = read_reg(cpu, src >> 4);
+                set_byte(cpu, address, value);
+                break;
+            case HLT:
                 return;
             default:
-                break;
+                printf("Instruction not handled\nOpcode: %02x", instruction);
+                return;
         }
     }
 }
