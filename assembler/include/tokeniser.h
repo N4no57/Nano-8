@@ -17,11 +17,10 @@ typedef enum {
     TOKEN_LABEL,
     TOKEN_SYMBOL,
     TOKEN_DIRECTIVE,
-    TOKEN_COMMENT
 } TokenType;
 
 typedef struct {
-    enum token_type type;
+    TokenType type;
     union {
         char *str_val;
         int int_value;
@@ -36,7 +35,8 @@ typedef struct {
 
 void initTokenList(TokenList *token_list);
 void token_list_push(TokenList *token_list, Token T);
+void freeTokenList(const TokenList *token_list);
 
-TokenList tokenise(char **lines, SymbolTable *symbol_table);
+TokenList tokenise(char **lines);
 
 #endif //TOKENISER_H
