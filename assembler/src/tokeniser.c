@@ -9,6 +9,37 @@
 #include <stdlib.h>
 #include <string.h>
 
+char *mnemonics[] = {
+    "hlt",
+    "nop"
+};
+
+char *registers[] = {
+    "r0",
+    "r1",
+    "r2",
+    "r3",
+    "pc",
+    "sp",
+    "bp",
+    "h",
+    "l"
+};
+
+char *strndup(const char *s, const size_t n) {
+    char *p;
+    size_t n1;
+
+    for (n1 = 0; n1 < n && s[n1] != '\0'; n1++)
+        continue;
+    p = malloc(n + 1);
+    if (p != NULL) {
+        memcpy(p, s, n1);
+        p[n1] = '\0';
+    }
+    return p;
+}
+
 void initTokenList(TokenList *token_list) {
     token_list->count = 0;
     token_list->capacity = 8;
