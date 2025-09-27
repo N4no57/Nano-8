@@ -75,36 +75,71 @@ TokenList tokenise(char **lines, SymbolTable *symbol_table) {
     int buff_index = 0;
     char buff[MAX_LINE_LENGTH] = {0};
 
-    while (lines[current_line] != NULL) {
-        buff_index = 0;
-        memset(buff, 0, MAX_LINE_LENGTH);
-        for (int i = 0; i < strlen(lines[current_line]); i++) {
-            Token token = {};
-            if (isspace(lines[current_line][i])) {
-                while (isspace(lines[current_line][i])) {
-                    i++;
+TokenList tokenise(char **lines) {
+    TokenList token_list;
+    initTokenList(&token_list);
+    int line_no = 0;
+
+    while (lines[line_no] != NULL) {
+        const char *line = lines[line_no];
+        int i = 0;
+
+        while (line[i] != '\0') {
+            if (isspace(line[i])) {
+                i++;
+                continue;
+            }
+
+            // comments
+            if (line[i] == ';') break;
+
+            // symbols
+            if (line[i] == ',' || line[i] == ':') {
+                const Token t = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
+                token_list_push(&token_list, t);
+                i++;
+                continue;
+            }
+
+            // number
+            if (isdigit(line[i]) || line[i] == '$') {
+                char buff[64]; int bi = 0;
+                if (line[i] == '$') i++;
+                while (isxdigit(line[i])) {
+                    buff[bi++] = line[i];
                 }
-            }
-            buff[buff_index] = lines[current_line][i];
-
-            if (strcmp(buff, "hlt") == 0 && strcmp(buff, "nop") == 0) {
-                token.type = TOKEN_MNEMONIC;
-                token.str_val = strdup(buff);
-                token_list_push(&token_list, token);
-                memset(buff, 0, buff_index + 1);
-                buff_index = -1;
+                buff[bi] = '\0';
+                const Token t = { .type = TOKEN_NUMBER, .int_value = atoi(buff) };
+                token_list_push(&token_list, t);
+                continue;
             }
 
-            if (buff[buff_index] == ':') {
-                token.type = TOKEN_LABEL;
-                token.str_val = strdup(buff);
-                memset(buff, 0, buff_index + 1);
-                buff_index = -1;
+            // identifier (mnemonic, register, label, directive)
+            if (isalpha(line[i]) || line[i] == '.') {
+                char buff[64]; int bi = 0;
+                while (isalnum(line[i]) || line[i] == '.') {
+                    buff[bi++] = line[i++];
+                }
+                buff[bi] = '\0';
+
+                Token t = {0};
+                if (buff[0] == '.') {
+                    t.type = TOKEN_DIRECTIVE;
+                } else if (ismnemonic(buff)) {
+                    t.type = TOKEN_MNEMONIC;
+                } else if (isregister(buff)) {
+                    t.type = TOKEN_REGISTER;
+                } else {
+                    t.type = TOKEN_LABEL;
+                }
+                t.str_val = strdup(buff);
+                token_list_push(&token_list, t);
+                continue;
             }
 
-            buff_index++;
+            i++;
         }
-        current_line++;
+        line_no++;
     }
 
     return token_list;
