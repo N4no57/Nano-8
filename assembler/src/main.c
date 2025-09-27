@@ -43,8 +43,18 @@ InstructionDef instruction_table[] = {
 	{ "hlt", 0x03, 0, encode_hlt, get_size_hlt },
 	{ "nop", 0x13, 0, encode_nop, get_size_nop }
 };
+int table_size = sizeof(instruction_table) / sizeof(InstructionDef);
 
-void first_pass(char **lines, SymbolTable *symbol_table) {
+void consume_token(int *tok_idx, Token *t, const TokenList *tok_list) {
+	if (*tok_idx >= tok_list->count) {
+		printf("Out of tokens\n");
+		exit(1);
+	}
+	*t = tok_list->data[*tok_idx];
+	(*tok_idx)++;
+}
+
+void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *num_bytes) {
 	uint16_t current_address = 0;
 	int current_line = 0;
 	int buff_index = 0;
