@@ -39,16 +39,9 @@
 // 	L = 0xF
 // };
 
-enum registers {
-	R0 = 0x0,
-	R1 = 0x1,
-	R2 = 0x2,
-	R3 = 0x3,
-	PC = 0xB,
-	SP = 0xC,
-	BP = 0xD,
-	H = 0xE,
-	L = 0xF
+InstructionDef instruction_table[] = {
+	{ "hlt", 0x03, 0, encode_hlt, get_size_hlt },
+	{ "nop", 0x13, 0, encode_nop, get_size_nop }
 };
 
 void first_pass(char **lines, SymbolTable *symbol_table) {
