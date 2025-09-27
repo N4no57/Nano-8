@@ -17,6 +17,7 @@ typedef enum {
     TOKEN_LABEL,
     TOKEN_SYMBOL,
     TOKEN_DIRECTIVE,
+    TOKEN_EOF
 } TokenType;
 
 typedef struct {

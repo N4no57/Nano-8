@@ -153,6 +153,8 @@ TokenList tokenise(char **lines) {
         }
         line_no++;
     }
+    Token t = {TOKEN_EOF};
+    token_list_push(&token_list, t);
 
     return token_list;
 }
