@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include "symbolTable.h"
 
+#define MAX_LINE_LENGTH 1024
+
 typedef enum {
     TOKEN_MNEMONIC,
     TOKEN_REGISTER,
@@ -33,7 +35,7 @@ typedef struct {
 } TokenList;
 
 void initTokenList(TokenList *token_list);
-void token_list_push(TokenList *list, Token T);
+void token_list_push(TokenList *token_list, Token T);
 
 TokenList tokenise(char **lines, SymbolTable *symbol_table);
 
