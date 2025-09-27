@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,12 +38,6 @@ enum registers {
 	L = 0xF
 };
 
-typedef struct {
-	enum instruction instruction;
-	int operand_count;
-	int instruction_size;
-} InstructionDef;
-
 void first_pass(char **lines, SymbolTable *symbol_table) {
 	uint16_t current_address = 0;
 	int current_line = 0;
@@ -51,7 +46,11 @@ void first_pass(char **lines, SymbolTable *symbol_table) {
 
 	while (lines[current_line] != NULL) {
 		for (int i = 0; i < strlen(lines[current_line]); i++) {
-			if (lines[current_line][i] == ' ') i++;
+			if (isspace(lines[current_line][i])) {
+				while (isspace(lines[current_line][i])) {
+					i++;
+				}
+			}
 			buff[buff_index] = lines[current_line][i];
 
 			if (strcmp(buff, "hlt") == 0) {
@@ -86,18 +85,41 @@ uint8_t *second_pass(char **lines, SymbolTable *table) {
 	uint8_t *binary = malloc(1024 * sizeof(uint8_t));
 
 	while (lines[current_line] != NULL) {
+		buff_index = 0;
+		memset(buff, 0, MAX_LINE_LENGTH);
 		for (int i = 0; i < strlen(lines[current_line]); i++) {
-			if (lines[current_line][i] == ' ') i++;
+			if (isspace(lines[current_line][i])) {
+				while (isspace(lines[current_line][i])) {
+					i++;
+				}
+			}
 			buff[buff_index] = lines[current_line][i];
 
 			if (strcmp(buff, "hlt") == 0) {
 				binary[binary_index++] = HLT;
 				current_address += 1;
+				memset(buff, 0, buff_index + 1);
+				buff_index = -1;
+			} else if (strcmp(buff, "nop") == 0) {
+				binary[binary_index++] = NOP;
+				current_address += 1;
+				memset(buff, 0, buff_index + 1);
+				buff_index = -1;
+			}
+
+			if (buff[buff_index] == ':') { // if is symbol skip
+				memset(buff, 0, buff_index + 1);
+				buff_index = -1;
 			}
 
 			buff_index++;
 		}
 		current_line++;
+	}
+
+	printf("Assembled Binary:\n");
+	for (int i = 0; i < binary_index; i++) {
+		printf("%02x ", binary[i]);
 	}
 
 	return binary;
@@ -113,6 +135,11 @@ void free_lines(char **lines, const int num_lines) {
 int main() {
 	SymbolTable symbol_table;
 	init_table(&symbol_table);
+
+	InstructionDef instruction_table[] = {
+		{ "hlt", 0x03, 0, encode_hlt },
+		{ "nop", 0x13, 0, encode_nop }
+	};
 
 	int line_capacity = LINE_NUM_BASE_SIZE;
     char **lines = malloc(line_capacity * sizeof(char *));
@@ -151,8 +178,10 @@ int main() {
 	fclose(input);
 
 	first_pass(lines, &symbol_table);
+	uint8_t *binary = second_pass(lines, &symbol_table);
 
 	// free everything
+	free(binary);
 	free_lines(lines, num_lines);
 	free_table(&symbol_table);
 
