@@ -15,6 +15,15 @@ void initTokenList(TokenList *token_list) {
     token_list->data = malloc(token_list->capacity * sizeof(Token));
 }
 
+void freeTokenList(const TokenList *token_list) {
+    for (int i = 0; i < token_list->count; i++) {
+        if (token_list->data[i].type != TOKEN_NUMBER) {
+            free(token_list->data[i].str_val);
+        }
+    }
+    free(token_list->data);
+}
+
 void token_list_push(TokenList *token_list, Token T) {
     if (token_list->count >= token_list->capacity) {
         token_list->capacity *= 2;
