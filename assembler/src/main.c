@@ -56,43 +56,57 @@ void consume_token(int *tok_idx, Token *t, const TokenList *tok_list) {
 
 void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *num_bytes) {
 	uint16_t current_address = 0;
-	int current_line = 0;
-	int buff_index = 0;
-	char buff[MAX_LINE_LENGTH] = {0};
+	int tok_idx = 0;
+	Token current_token;
+	consume_token(&tok_idx, &current_token, tokens);
 
-	while (lines[current_line] != NULL) {
-		for (int i = 0; i < strlen(lines[current_line]); i++) {
-			if (isspace(lines[current_line][i])) {
-				while (isspace(lines[current_line][i])) {
-					i++;
+	while (current_token.type != TOKEN_EOF) {
+		if (current_token.type == TOKEN_LABEL) {
+			// locally store string and consume token
+			char label[strlen(current_token.str_val) + 1];
+			strcpy(label, current_token.str_val);
+			consume_token(&tok_idx, &current_token, tokens);
+			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ':') {
+				add_symbol(symbol_table, label, current_address);
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
+			printf("bad child");
+			exit(1);
+		}
+
+		if (current_token.type == TOKEN_MNEMONIC) {
+			const InstructionDef *inst = find_instruction(instruction_table, table_size, current_token.str_val);
+			consume_token(&tok_idx, &current_token, tokens);
+
+			Token operands[32];
+			int operand_count = 0;
+
+			while (current_token.type != TOKEN_MNEMONIC && current_token.type != TOKEN_EOF) {
+				operands[operand_count++] = current_token;
+				consume_token(&tok_idx, &current_token, tokens);
+				if (current_token.type == TOKEN_EOF) break;
+				if (operand_count >= 32) {
+					fprintf(stderr, "Too many operands\n");
+					exit(1);
 				}
 			}
-			buff[buff_index] = lines[current_line][i];
 
-			if (strcmp(buff, "hlt") == 0) {
-				memset(buff, 0, MAX_LINE_LENGTH);
-				buff_index = -1;
-				current_address += 1;
-			} else if (strcmp(buff, "nop") == 0) {
-				memset(buff, 0, MAX_LINE_LENGTH);
-				buff_index = -1;
-				current_address += 1;
-			}
+			current_address += inst->get_size(operands, operand_count, inst->operand_count);
 
-			if (buff[buff_index] == ':') {
-				buff[buff_index] = '\0';
-				add_symbol(symbol_table, buff, current_address);
-				memset(buff, 0, MAX_LINE_LENGTH);
-				buff_index = -1;
-			}
-
-			buff_index++;
+			continue;
 		}
-		current_line++;
+
+		// fallback - consume token
+		consume_token(&tok_idx, &current_token, tokens);
 	}
+
+	*num_bytes = current_address;
 }
 
 uint8_t *second_pass(char **lines, SymbolTable *table) {
+
+uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t *num_bytes) {
 	uint16_t current_address = 0;
 	int current_line = 0;
 	int buff_index = 0;
