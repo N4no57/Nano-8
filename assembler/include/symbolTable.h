@@ -2,10 +2,10 @@
 // Created by Bernardo on 27/09/2025.
 //
 
-#include <stdint.h>
-
 #ifndef SYMBOLTABLE_H
 #define SYMBOLTABLE_H
+
+#include <stdint.h>
 
 typedef struct {
     char *label;

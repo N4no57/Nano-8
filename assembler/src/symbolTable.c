@@ -5,6 +5,7 @@
 #include "../include/symbolTable.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 void init_table(SymbolTable *table) {
     table->count = 0;
@@ -12,10 +13,15 @@ void init_table(SymbolTable *table) {
     table->data = malloc(table->capacity * sizeof(Symbol));
 }
 
-void add_symbol(SymbolTable *table, const char *label, uint16_t address) {
+void add_symbol(SymbolTable *table, const char *label, const uint16_t address) {
     if (table->count >= table->capacity) {
-      table->capacity *= 2;
-      table->data = realloc(table->data, table->capacity * sizeof(Symbol));
+        table->capacity *= 2;
+        Symbol *tmp = realloc(table->data, table->capacity * sizeof(Symbol));
+        if (!tmp) {
+            printf("Failed to allocate memory for symbol table\n");
+            exit(1);
+        }
+        table->data = tmp;
     }
 
     table->data[table->count].label = strdup(label);
