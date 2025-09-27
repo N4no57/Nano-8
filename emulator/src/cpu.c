@@ -54,11 +54,11 @@ uint8_t read_reg(const CPU *cpu, const uint8_t reg) {
             return cpu->R2;
         case 0x3: // R3
             return cpu->R3;
-        case 0xA: // PC
+        case 0xB: // PC
             return cpu->PC;
-        case 0xB: // SP
+        case 0xC: // SP
             return cpu->SP;
-        case 0xC: // BP
+        case 0xD: // BP
             return cpu->BP;
         case 0xE: // H reg
             return cpu->H;
