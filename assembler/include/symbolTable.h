@@ -20,7 +20,7 @@ typedef struct {
 
 void init_table(SymbolTable *table);
 void add_symbol(SymbolTable *table, const char *label, uint16_t address);
-int find_symbol(SymbolTable *table, const char *label, uint16_t *out_addr);
-void free_table(SymbolTable *table);
+int find_symbol(const SymbolTable *table, const char *label, uint16_t *out_addr);
+void free_table(const SymbolTable *table);
 
 #endif //SYMBOLTABLE_H

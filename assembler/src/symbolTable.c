@@ -24,7 +24,7 @@ void add_symbol(SymbolTable *table, const char *label, uint16_t address) {
     table->count++;
 }
 
-int find_symbol(SymbolTable *table, const char *label, uint16_t *out_addr) {
+int find_symbol(const SymbolTable *table, const char *label, uint16_t *out_addr) {
     for (size_t i = 0; i < table->count; i++) {
         if (strcmp(table->data[i].label, label) == 0) {
             *out_addr = table->data[i].address;
@@ -34,7 +34,7 @@ int find_symbol(SymbolTable *table, const char *label, uint16_t *out_addr) {
     return 0; // not found
 }
 
-void free_table(SymbolTable *table) {
+void free_table(const SymbolTable *table) {
     for (size_t i = 0; i < table->count; i++) {
       free(table->data[i].label);
     }
