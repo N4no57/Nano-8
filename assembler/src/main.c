@@ -23,6 +23,18 @@ enum instruction {
 	NOP = 0x13,
 };
 
+enum registers {
+	R0 = 0x0,
+	R1 = 0x1,
+	R2 = 0x2,
+	R3 = 0x3,
+	PC = 0xB,
+	SP = 0xC,
+	BP = 0xD,
+	H = 0xE,
+	L = 0xF
+};
+
 typedef struct {
 	enum instruction instruction;
 	int operand_count;
