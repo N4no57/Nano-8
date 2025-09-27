@@ -110,42 +110,49 @@ void free_lines(char **lines, const int num_lines) {
 
 int main() {
 	SymbolTable symbol_table;
+	init_table(&symbol_table);
 
 	int line_capacity = LINE_NUM_BASE_SIZE;
     char **lines = malloc(line_capacity * sizeof(char *));
-	if (lines == NULL) {
+	if (!lines) {
 		printf("Memory allocation error\n");
+		free_table(&symbol_table);
 		return 1;
 	}
 
 	FILE *input = fopen("test.asm", "r");
-	if (input == NULL) {
+	if (!input) {
+		free_table(&symbol_table);
+		free_lines(lines, 0);
 		printf("Error opening input file\n");
 		return 1;
 	}
 
-	int line_num = 0;
-	while (!feof(input)) {
-		if (line_num >= line_capacity - 1) {
-			lines = realloc(lines, (line_capacity*=2) * sizeof(char *));
-			if (lines == NULL) {
+	int num_lines = 0;
+	char buffer[MAX_LINE_LENGTH];
+	while (fgets(buffer, line_capacity, input)) {
+		if (num_lines >= line_capacity - 1) {
+			char **tmp = realloc(lines, line_capacity * 2 * sizeof(char *));
+			if (!tmp) {
 				printf("Memory allocation error\n");
+				free_lines(lines, num_lines);
+				free_table(&symbol_table);
 				return 1;
 			}
+			lines = tmp;
+			line_capacity *= 2;
 		}
-		lines[line_num++] = get_line(input);
+		lines[num_lines++] = strdup(buffer);
 	}
-	lines[line_num] = NULL;
+	lines[num_lines] = NULL;
 
 	fclose(input);
 
 	first_pass(lines, &symbol_table);
 
 	// free everything
-	for (int i = 0; i < line_num; i++) {
-		free(lines[i]);
-	}
-	free(lines);
+	free_lines(lines, num_lines);
+	free_table(&symbol_table);
 
 	return 0;
 }
