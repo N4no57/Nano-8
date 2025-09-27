@@ -41,16 +41,6 @@ typedef struct {
 	int instruction_size;
 } InstructionDef;
 
-char *get_line(FILE *in) {
-	char *line = malloc(MAX_LINE_LENGTH);
-	if (line == NULL) {
-		perror("malloc");
-		exit(EXIT_FAILURE);
-	}
-	fgets(line, MAX_LINE_LENGTH, in);
-	return line;
-}
-
 void first_pass(char **lines, SymbolTable *symbol_table) {
 	// Assumes that there is at least 1 line in the file
 	uint16_t current_address = 0;
