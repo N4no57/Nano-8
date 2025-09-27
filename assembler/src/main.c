@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../include/instructionDef.h"
 #include "../include/symbolTable.h"
 
 #define SYMBOL_TABLE_BASE_SIZE 16
