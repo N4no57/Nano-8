@@ -69,11 +69,23 @@ void token_list_push(TokenList *token_list, Token T) {
     token_list->count++;
 }
 
-TokenList tokenise(char **lines, SymbolTable *symbol_table) {
-    TokenList token_list = {};
-    int current_line = 0;
-    int buff_index = 0;
-    char buff[MAX_LINE_LENGTH] = {0};
+int ismnemonic(const char *s) {
+    for (int i = 0; i < sizeof(mnemonics) / sizeof(mnemonics[0]); i++) {
+        if (strcmp(s, mnemonics[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int isregister(const char *s) {
+    for (int i = 0; i < sizeof(registers) / sizeof(registers[0]); i++) {
+        if (strcmp(s, registers[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 TokenList tokenise(char **lines) {
     TokenList token_list;
