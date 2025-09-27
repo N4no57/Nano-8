@@ -75,7 +75,31 @@ void first_pass(char **lines, SymbolTable *symbol_table) {
 	}
 }
 
-void second_pass(char **lines, Symbol *symbols, FILE *out);
+uint8_t *second_pass(char **lines, SymbolTable *table) {
+	uint16_t current_address = 0;
+	int current_line = 0;
+	int buff_index = 0;
+	char buff[MAX_LINE_LENGTH] = {0};
+	size_t binary_index = 0;
+	uint8_t *binary = malloc(1024 * sizeof(uint8_t));
+
+	while (lines[current_line] != NULL) {
+		for (int i = 0; i < strlen(lines[current_line]); i++) {
+			if (lines[current_line][i] == ' ') i++;
+			buff[buff_index] = lines[current_line][i];
+
+			if (strcmp(buff, "hlt") == 0) {
+				binary[binary_index++] = HLT;
+				current_address += 1;
+			}
+
+			buff_index++;
+		}
+		current_line++;
+	}
+
+	return binary;
+}
 
 void free_lines(char **lines, const int num_lines) {
 	for (int i = 0; i < num_lines; i++) {
