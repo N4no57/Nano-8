@@ -42,20 +42,37 @@ typedef struct {
 } InstructionDef;
 
 void first_pass(char **lines, SymbolTable *symbol_table) {
-	// Assumes that there is at least 1 line in the file
 	uint16_t current_address = 0;
 	int current_line = 0;
+	int buff_index = 0;
+	char buff[MAX_LINE_LENGTH] = {0};
 
-	do {
+	while (lines[current_line] != NULL) {
 		for (int i = 0; i < strlen(lines[current_line]); i++) {
-			if (lines[current_line][i] == ':') {
-				Symbol *symbol = malloc(sizeof(Symbol));
-				strcpy_s(symbol->label, i+1, lines[current_line]);
-				symbol->address = current_address;
-				free(symbol);
+			if (lines[current_line][i] == ' ') i++;
+			buff[buff_index] = lines[current_line][i];
+
+			if (strcmp(buff, "hlt") == 0) {
+				memset(buff, 0, MAX_LINE_LENGTH);
+				buff_index = -1;
+				current_address += 1;
+			} else if (strcmp(buff, "nop") == 0) {
+				memset(buff, 0, MAX_LINE_LENGTH);
+				buff_index = -1;
+				current_address += 1;
 			}
+
+			if (buff[buff_index] == ':') {
+				buff[buff_index] = '\0';
+				add_symbol(symbol_table, buff, current_address);
+				memset(buff, 0, MAX_LINE_LENGTH);
+				buff_index = -1;
+			}
+
+			buff_index++;
 		}
-	} while (lines[current_line++] != NULL);
+		current_line++;
+	}
 }
 
 void second_pass(char **lines, Symbol *symbols, FILE *out);
