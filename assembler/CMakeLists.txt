@@ -5,8 +5,6 @@ set(CMAKE_C_STANDARD 11)
 
 add_executable(assembler src/main.c
         src/symbolTable.c include/symbolTable.h
-        src/instructionDef.c
-        include/instructionDef.h
-        src/tokeniser.c
-        include/tokeniser.h
+        src/instructionDef.c include/instructionDef.h
+        src/tokeniser.c include/tokeniser.h
 )
