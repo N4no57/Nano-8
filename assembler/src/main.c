@@ -104,48 +104,60 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 	*num_bytes = current_address;
 }
 
-uint8_t *second_pass(char **lines, SymbolTable *table) {
-
 uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t *num_bytes) {
 	uint16_t current_address = 0;
-	int current_line = 0;
-	int buff_index = 0;
-	char buff[MAX_LINE_LENGTH] = {0};
-	size_t binary_index = 0;
-	uint8_t *binary = malloc(1024 * sizeof(uint8_t));
+	int tok_idx = 0;
 
-	while (lines[current_line] != NULL) {
-		buff_index = 0;
-		memset(buff, 0, MAX_LINE_LENGTH);
-		for (int i = 0; i < strlen(lines[current_line]); i++) {
-			if (isspace(lines[current_line][i])) {
-				while (isspace(lines[current_line][i])) {
-					i++;
+	uint16_t binary_index = 0;
+	uint8_t *binary = malloc(*num_bytes);
+	if (binary == NULL) {
+		perror("malloc");
+		exit(1);
+	}
+
+	Token current_token;
+	consume_token(&tok_idx, &current_token, tokens);
+
+	while (current_token.type != TOKEN_EOF) {
+		if (current_token.type == TOKEN_LABEL) {
+			consume_token(&tok_idx, &current_token, tokens);
+			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ':') {
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
+			printf("bad child");
+			exit(1);
+		}
+
+		if (current_token.type == TOKEN_MNEMONIC) {
+			const InstructionDef *inst = find_instruction(instruction_table, table_size, current_token.str_val);
+			consume_token(&tok_idx, &current_token, tokens);
+
+			Token operands[32];
+			int operand_count = 0;
+
+			while (current_token.type != TOKEN_MNEMONIC && current_token.type != TOKEN_EOF) {
+				operands[operand_count++] = current_token;
+				consume_token(&tok_idx, &current_token, tokens);
+				if (current_token.type == TOKEN_EOF) break;
+				if (operand_count >= 32) {
+					fprintf(stderr, "Too many operands\n");
+					exit(1);
 				}
 			}
-			buff[buff_index] = lines[current_line][i];
 
-			if (strcmp(buff, "hlt") == 0) {
-				binary[binary_index++] = HLT;
-				current_address += 1;
-				memset(buff, 0, buff_index + 1);
-				buff_index = -1;
-			} else if (strcmp(buff, "nop") == 0) {
-				binary[binary_index++] = NOP;
-				current_address += 1;
-				memset(buff, 0, buff_index + 1);
-				buff_index = -1;
-			}
+			current_address += inst->get_size(operands, operand_count, inst->operand_count);
+			inst->encode(inst->base_opcode, operand_count, binary, &binary_index, operands);
 
-			if (buff[buff_index] == ':') { // if is symbol skip
-				memset(buff, 0, buff_index + 1);
-				buff_index = -1;
-			}
-
-			buff_index++;
+			continue;
 		}
-		current_line++;
+
+		// fallback - consume
+		consume_token(&tok_idx, &current_token, tokens);
 	}
+
+	if (binary_index != *num_bytes) fprintf(stderr, "Warning: binary size mismatch %u != %u\n", binary_index, *num_bytes);
+
 
 	printf("Assembled Binary:\n");
 	for (int i = 0; i < binary_index; i++) {
@@ -166,11 +178,6 @@ int main() {
 	SymbolTable symbol_table;
 	init_table(&symbol_table);
 
-	InstructionDef instruction_table[] = {
-		{ "hlt", 0x03, 0, encode_hlt },
-		{ "nop", 0x13, 0, encode_nop }
-	};
-
 	int line_capacity = LINE_NUM_BASE_SIZE;
     char **lines = malloc(line_capacity * sizeof(char *));
 	if (!lines) {
@@ -189,7 +196,7 @@ int main() {
 
 	int num_lines = 0;
 	char buffer[MAX_LINE_LENGTH];
-	while (fgets(buffer, line_capacity, input)) {
+	while (fgets(buffer, MAX_LINE_LENGTH, input)) {
 		if (num_lines >= line_capacity - 1) {
 			char **tmp = realloc(lines, line_capacity * 2 * sizeof(char *));
 			if (!tmp) {
@@ -207,12 +214,26 @@ int main() {
 
 	fclose(input);
 
-	first_pass(lines, &symbol_table);
-	uint8_t *binary = second_pass(lines, &symbol_table);
+	const TokenList tokens = tokenise(lines);
+
+	free_lines(lines, num_lines);
+
+	uint16_t binary_size = 0;
+
+	first_pass(&tokens, &symbol_table, &binary_size);
+
+	if (binary_size == 0) {
+		printf("Nothing to compile\n");
+		freeTokenList(&tokens);
+		free_table(&symbol_table);
+		return 1;
+	}
+
+	uint8_t *binary = second_pass(&tokens, &symbol_table, &binary_size);
 
 	// free everything
+	freeTokenList(&tokens);
 	free(binary);
-	free_lines(lines, num_lines);
 	free_table(&symbol_table);
 
 	return 0;
