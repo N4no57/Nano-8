@@ -77,6 +77,13 @@ void first_pass(char **lines, SymbolTable *symbol_table) {
 
 void second_pass(char **lines, Symbol *symbols, FILE *out);
 
+void free_lines(char **lines, const int num_lines) {
+	for (int i = 0; i < num_lines; i++) {
+		free(lines[i]);
+	}
+	free(lines);
+}
+
 int main() {
 	SymbolTable symbol_table;
 
