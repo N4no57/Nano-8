@@ -7,6 +7,7 @@
 
 #include "symbolTable.h"
 #include "tokeniser.h"
+#include "objectFileWriter.h"
 
 typedef struct {
     enum { NONE, IMMEDIATE, REGISTER, ABSOLUTE, RELATIVE, INDIRECT_MEM, INDIRECT_REG, INDEXED_MEM} kind;
@@ -21,6 +22,9 @@ typedef struct {
     };
 } ParsedOperand;
 
+void RelocationTableAppend(struct RelocationTable *relocTable, const char *name,
+                           uint16_t segment_index, uint16_t segment_offset, uint8_t type);
+
 int get_reg(const char *s);
 
 void consume_token(int *tok_idx, Token *t, const TokenList *tok_list);
@@ -30,6 +34,7 @@ int get_base(char c);
 int is_base_mod(Token t);
 
 // parses tokens until it reaches a "," then returns the parsed operand
-ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok);
+ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok,
+    struct RelocationTable *reloc_table, const AssemblingSegmentTable *segTable, AssemblingSegment current_seg, Token mnemonic);
 
 #endif //UTILS_H
