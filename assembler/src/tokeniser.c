@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../include/utils.h"
+
 char *mnemonics[] = {
     "mov",
     "add",
@@ -126,8 +128,9 @@ TokenList tokenise(char **lines) {
                 }
                 buff[bi] = '\0';
                 int num;
-                if (token_list.data[token_list.count-1].type == TOKEN_SYMBOL && token_list.data[token_list.count-1].str_val[0] == '$') {
-                    num = strtol(buff, NULL, 16);
+                const Token prev_token = token_list.data[token_list.count-1];
+                if (prev_token.type == TOKEN_SYMBOL && is_base_mod(prev_token)) {
+                    num = strtol(buff, NULL, get_base(prev_token.str_val[0]));
                 } else {
                     num = strtol(buff, NULL, 10);
                 }
