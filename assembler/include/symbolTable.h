@@ -6,10 +6,13 @@
 #define SYMBOLTABLE_H
 
 #include <stdint.h>
+#include "segments.h"
 
 typedef struct {
     char *label;
-    uint16_t address;
+    AssemblingSegment *segment;
+    uint16_t offset;
+    uint8_t defined;
 } Symbol;
 
 typedef struct {
@@ -19,7 +22,7 @@ typedef struct {
 } SymbolTable;
 
 void init_table(SymbolTable *table);
-void add_symbol(SymbolTable *table, const char *label, uint16_t address);
+void add_symbol(SymbolTable *table, AssemblingSegment *seg, const char *label, uint16_t offset);
 int find_symbol(const SymbolTable *table, const char *label, uint16_t *out_addr);
 void free_table(const SymbolTable *table);
 
