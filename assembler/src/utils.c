@@ -33,13 +33,14 @@ void appendSegment(AssemblingSegmentTable *table, const AssemblingSegment segmen
     table->count++;
 }
 
-AssemblingSegment *find_segment(const AssemblingSegmentTable *table, const char *name) {
+int find_segment(const AssemblingSegmentTable *table, AssemblingSegment **seg, const char *name) {
     for (int i = 0; i < table->count; i++) {
         if (strcmp(table->segments[i].name, name) == 0) {
-            return &table->segments[i];
+            *seg = &table->segments[i];
+            return 1;
         }
     }
-    return NULL;
+    return 0;
 }
 
 void freeSegmentTable(const AssemblingSegmentTable *table) {

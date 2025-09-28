@@ -35,7 +35,7 @@ typedef struct {
 
 void initSegmentTable(AssemblingSegmentTable *table);
 void appendSegment(AssemblingSegmentTable *table, AssemblingSegment segment);
-AssemblingSegment *find_segment(const AssemblingSegmentTable *table, const char *name);
+int find_segment(const AssemblingSegmentTable *table, AssemblingSegment **seg, const char *name);
 void freeSegmentTable(const AssemblingSegmentTable *table);
 
 int get_reg(const char *s);
