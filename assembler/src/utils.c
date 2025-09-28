@@ -29,6 +29,14 @@ void consume_token(int *tok_idx, Token *t, const TokenList *tok_list) {
     (*tok_idx)++;
 }
 
+Token peek(int *tok_idx, TokenList *tok_list, int n) {
+    if (*tok_idx+n >= tok_list->count) {
+        fprintf(stderr, "Out of tokens\n");
+        exit(1);
+    }
+    return tok_list->data[*tok_idx+n];
+}
+
 int get_base(char c) {
     if (c == '$') {
         return 16;
