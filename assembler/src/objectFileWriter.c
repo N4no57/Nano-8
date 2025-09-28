@@ -58,3 +58,41 @@ struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable
 
     return objectFile;
 }
+
+
+void dumpObjectFile(const struct ObjectFile *obj) {
+    printf("=== Nano-8 Object File ===\n");
+    printf("Magic: 0x%08X\n", obj->header.magic);
+    printf("Version: %s\n", obj->header.version);
+    printf("Segments (%u):\n", obj->header.segmentTable.numSegments);
+
+    int seg_offset = 0;
+
+    for (int i = 0; i < obj->header.segmentTable.numSegments; i++) {
+        struct Segment *seg = &obj->header.segmentTable.entries[i];
+        printf("  Segment %d: '%s', size=%u, file_offset=0x%04X\n",
+               i, seg->name, seg->size, seg->file_offset);
+        printf("    Data: ");
+        for (int j = 0; j < seg->size; j++) {
+            printf("%02X ", obj->Data[j + seg_offset]); // could adjust for segment offset
+        }
+        seg_offset += seg->size;
+        printf("\n");
+    }
+
+    printf("Symbols (%u):\n", obj->symbolTable.numSymbols);
+    for (int i = 0; i < obj->symbolTable.numSymbols; i++) {
+        struct ObjSymbol *sym = &obj->symbolTable.symbols[i];
+        printf("  Symbol %d: '%s', segment=%u, offset=0x%04X, defined=%u\n",
+               i, sym->name, sym->segment_index, sym->segment_offset, sym->defined);
+    }
+
+    printf("Relocations (%u):\n", obj->relocationTable.numRelocations);
+    for (int i = 0; i < obj->relocationTable.numRelocations; i++) {
+        struct RelocationEntry *rel = &obj->relocationTable.relocations[i];
+        printf("  Relocation %d: offset=0x%04X, symbol='%s', type=%u\n",
+               i, rel->segment_offset, rel->name, rel->type);
+    }
+
+    printf("==========================\n");
+}
