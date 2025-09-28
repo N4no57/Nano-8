@@ -92,6 +92,34 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                     return operand;
                 }
 
+                // most complex one of them all
+                if (current_tok->str_val[0] == '[') { // indexed [(r0, r1)±num]
+                    consume_token(tok_idx, current_tok, tokens);
+                    if (!(current_tok->type == TOKEN_SYMBOL && current_tok->str_val[0] == '(')) {
+                        fprintf(stderr, "Invalid token\n");
+                        exit(1);
+                    }
+                    operand = get_reg_pair(tokens, symbol_table, tok_idx, current_tok); // (r0, r1)
+                    operand.kind = INDEXED_MEM;
+                    if (current_tok->type == TOKEN_SYMBOL &&
+                        !(current_tok->str_val[0] == '+' || current_tok->str_val[0] == '-')) {
+                        fprintf(stderr, "Invalid token\n");
+                        exit(1);
+                    }
+                    char sign = current_tok->str_val[0];
+                    consume_token(tok_idx, current_tok, tokens);
+                    if (current_tok->type != TOKEN_NUMBER) {
+                        fprintf(stderr, "Invalid token\n");
+                        exit(1);
+                    }
+                    int num = current_tok->int_value;
+                    if (sign == '-') num *= -1;
+                    operand.mem_pair.offset = num;
+                    consume_token(tok_idx, current_tok, tokens); // offset num
+                    consume_token(tok_idx, current_tok, tokens); // "]"
+                    return operand;
+                }
+
                 if (is_base_mod(*current_tok)) { // check if base modifier, expect to be succeeded by a number token
                     operand.kind = ABSOLUTE;
                     consume_token(tok_idx, current_tok, tokens); // next token expected to be number token
