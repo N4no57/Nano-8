@@ -112,7 +112,8 @@ TokenList tokenise(char **lines) {
             // symbols
             if (line[i] == ',' || line[i] == ':' ||
                 line[i] == '(' || line[i] == ')' ||
-                line[i] == '[' || line[i] == ']' ) {
+                line[i] == '[' || line[i] == ']' ||
+                line[i] == '+' || line[i] == '-') {
                 const Token t = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
                 token_list_push(&token_list, t);
                 i++;
