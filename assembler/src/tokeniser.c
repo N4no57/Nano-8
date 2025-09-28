@@ -121,12 +121,17 @@ TokenList tokenise(char **lines) {
             // number
             if (isdigit(line[i])) {
                 char buff[64]; int bi = 0;
-                if (line[i] == '$') i++;
                 while (isxdigit(line[i])) {
-                    buff[bi++] = line[i];
+                    buff[bi++] = line[i++];
                 }
                 buff[bi] = '\0';
-                const Token t = { .type = TOKEN_NUMBER, .int_value = atoi(buff) };
+                int num;
+                if (token_list.data[token_list.count-1].type == TOKEN_SYMBOL && token_list.data[token_list.count-1].str_val[0] == '$') {
+                    num = strtol(buff, NULL, 16);
+                } else {
+                    num = strtol(buff, NULL, 10);
+                }
+                const Token t = { .type = TOKEN_NUMBER, .int_value = num };
                 token_list_push(&token_list, t);
                 continue;
             }
