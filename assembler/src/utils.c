@@ -81,7 +81,10 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                         consume_token(tok_idx, current_tok, tokens);
                         consume_token(tok_idx, current_tok, tokens);
                     }
-                } else if (is_base_mod(*current_tok)) { // check if base modifier, expect to be succeeded by a number token
+                    return operand;
+                }
+
+                if (is_base_mod(*current_tok)) { // check if base modifier, expect to be succeeded by a number token
                     operand.kind = ABSOLUTE;
                     consume_token(tok_idx, current_tok, tokens); // next token expected to be number token
                     if (current_tok->type != TOKEN_NUMBER) { // check if not
@@ -91,28 +94,49 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                     // is assumed to already have base converted
                     operand.imm = current_tok->int_value;
                     consume_token(tok_idx, current_tok, tokens);
-                } else if (current_tok->str_val[0] == '#') { // check if immediate value
+                    return operand;
+                }
+
+                if (current_tok->str_val[0] == '#') { // check if immediate value
                     // may be succeeded by base modifier
                     operand.kind = IMMEDIATE;
                     consume_token(tok_idx, current_tok, tokens);
-                    if (current_tok->type) {}
+                    if (is_base_mod(*current_tok)) {
+                        consume_token(tok_idx, current_tok, tokens);
+                    }
+                    // expect number tok
+                    if (current_tok->type != TOKEN_NUMBER) { // check if not
+                        printf("Invalid token\n");
+                        exit(1);
+                    }
+                    // is assumed to already have base converted
+                    operand.imm = current_tok->int_value;
+                    consume_token(tok_idx, current_tok, tokens);
+                    return operand;
                 }
-            break;
+                break;
+
+
             case TOKEN_REGISTER:
                 operand.kind = REGISTER;
-            int reg = get_reg(current_tok->str_val);
-            if (reg == -1) {
-                printf("Invalid register\n");
-                exit(1);
-            }
-            operand.reg = reg;
-            consume_token(tok_idx, current_tok, tokens);
-            break;
-            case TOKEN_NUMBER:
-                break;
+                const int reg = get_reg(current_tok->str_val);
+                if (reg == -1) {
+                    printf("Invalid register\n");
+                    exit(1);
+                }
+                operand.reg = reg;
+                consume_token(tok_idx, current_tok, tokens);
+                return operand;
+
+
+            case TOKEN_NUMBER: // number without base modifiers
+                operand.kind = ABSOLUTE;
+                operand.imm = current_tok->int_value;
+                consume_token(tok_idx, current_tok, tokens);
+                return operand;
             default: break;
         }
-        }
+    }
 
     return operand;
 }
