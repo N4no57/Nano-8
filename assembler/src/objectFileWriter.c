@@ -69,6 +69,8 @@ void freeObjectFile(const struct ObjectFile *obj) {
 }
 
 void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
+    char padding[16] = {0};
+
     FILE *f = fopen(fileName, "wb");
     if (!f) {
         perror("Failed to open file");
@@ -78,7 +80,7 @@ void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
     fwrite(&obj->header.magic, sizeof(obj->header.magic), 1, f);
     fwrite(&obj->header.version, sizeof(obj->header.version), 1, f);
     fwrite(&obj->header.segmentTable.numSegments, sizeof(obj->header.segmentTable.numSegments), 1, f);
-    fwrite("\0\0\0\0", 4, 1, f); // padding
+    fwrite(padding, 4, 1, f); // padding
 
     int data_size = 0;
 
@@ -87,12 +89,18 @@ void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
         fwrite(obj->header.segmentTable.entries[i].name, sizeof(obj->header.segmentTable.entries[i].name), 1, f);
         fwrite(&obj->header.segmentTable.entries[i].size, sizeof(obj->header.segmentTable.entries[i].size), 1, f);
         fwrite(&obj->header.segmentTable.entries[i].file_offset, sizeof(obj->header.segmentTable.entries[i].file_offset), 1, f);
-        fwrite("\0\0\0\0\0\0\0\0\0\0", 10, 1, f); // padding
+        fwrite(padding, 10, 1, f); // padding
     }
 
-    fwrite(obj->Data, sizeof(obj->Data), 1, f);
+    fwrite(obj->Data, data_size, 1, f);
 
-    fwrite(&obj->symbolTable.numSymbols, data_size, 1, f);
+    const int padding_required = data_size % 16;
+
+    if (padding_required) {
+        fwrite(padding, 16 - (padding_required + sizeof(obj->symbolTable.numSymbols)), 1, f);
+    }
+
+    fwrite(&obj->symbolTable.numSymbols, sizeof(obj->symbolTable.numSymbols), 1, f);
     for (int i = 0; i < obj->symbolTable.numSymbols; i++) {
         fwrite(obj->symbolTable.symbols[i].name, sizeof(obj->symbolTable.symbols[i].name), 1, f);
         fwrite(&obj->symbolTable.symbols[i].segment_index, sizeof(obj->symbolTable.symbols[i].segment_index), 1, f);
