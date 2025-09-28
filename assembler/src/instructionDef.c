@@ -84,10 +84,18 @@ void encode_mov(uint8_t base_opcode, int operand_count, uint8_t *out, uint16_t *
         out[(*binary_index)++] = operands[1].imm >> 8 & 0xFF;
         return;
     }
-    if (operands[0].kind == REGISTER && operands[1].kind == INDIRECT_REG) { // TODO
+    if (operands[0].kind == REGISTER && operands[1].kind == INDIRECT_REG) {
+        out[(*binary_index)++] = base_opcode + 0b00001100;
+        out[(*binary_index)++] = operands[0].reg << 4;
+        out[(*binary_index)++] = operands[1].mem_pair.reg_high << 4 | operands[1].mem_pair.reg_low;
         return;
     }
-    if (operands[0].kind == REGISTER && operands[1].kind == INDEXED_MEM) { // TODO
+    if (operands[0].kind == REGISTER && operands[1].kind == INDEXED_MEM) {
+        out[(*binary_index)++] = base_opcode + 0b00010000;
+        out[(*binary_index)++] = operands[0].reg << 4;
+        out[(*binary_index)++] = operands[1].mem_pair.reg_high << 4 | operands[1].mem_pair.reg_low;
+        out[(*binary_index)++] = operands[1].mem_pair.offset & 0xFF;
+        out[(*binary_index)++] = operands[1].mem_pair.offset >> 8 & 0xFF;
         return;
     }
     if (operands[0].kind == ABSOLUTE && operands[1].kind == REGISTER) { // TODO
