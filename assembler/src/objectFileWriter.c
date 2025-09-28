@@ -45,7 +45,7 @@ struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable
     objectFile.symbolTable.symbols = malloc(sizeof(struct ObjSymbol) * sTable->count);
     for (int i = 0; i < sTable->count; i++) {
         strcpy(objectFile.symbolTable.symbols[i].name, sTable->data[i].label);
-        objectFile.symbolTable.symbols[i].segment_index = 0; // TODO placeholder
+        objectFile.symbolTable.symbols[i].segment_index = get_segment_index(segTable, sTable->data[i].segment);
         objectFile.symbolTable.symbols[i].segment_offset = sTable->data[i].offset;
         objectFile.symbolTable.symbols[i].defined = sTable->data[i].defined;
     }

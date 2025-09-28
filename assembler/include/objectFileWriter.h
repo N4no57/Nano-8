@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include "utils.h"
+#include "segments.h"
 
 struct Segment {
     char name[16];
