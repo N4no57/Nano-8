@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 InstructionDef *find_instruction(InstructionDef table[], int table_int, const char *mnemonic) {
     for (int i = 0; i < table_int; i++) {

@@ -6,8 +6,6 @@
 #define INSTRUCTIONDEF_H
 
 #include <stdint.h>
-#include <string.h>
-#include "tokeniser.h"
 #include "utils.h"
 
 typedef struct {
