@@ -5,8 +5,11 @@
 #ifndef OBJECT_FILE_H
 #define OBJECT_FILE_H
 
+#define RELOC_ABSOLUTE 0
+#define RELOC_RELATIVE 1
+
 #include <stdint.h>
-#include "utils.h"
+#include "symbolTable.h"
 #include "segments.h"
 
 struct Segment {
@@ -40,6 +43,7 @@ struct ObjSymbolTable {
 
 struct RelocationEntry {
     char name[16];
+    uint16_t segment_index;
     uint16_t segment_offset;
     uint8_t type;
 };
@@ -47,6 +51,7 @@ struct RelocationEntry {
 struct RelocationTable {
     uint16_t numRelocations;
     struct RelocationEntry *relocations;
+    uint16_t capacity; // value used only for generating the relocation table
 };
 
 struct ObjectFile {
@@ -56,7 +61,7 @@ struct ObjectFile {
     struct RelocationTable relocationTable;
 };
 
-struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable *segTable);
+struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable *segTable, struct RelocationTable *relocTable);
 void freeObjectFile(const struct ObjectFile *obj);
 void writeObjectFile(const struct ObjectFile *objectFile, const char *fileName);
 void dumpObjectFile(const struct ObjectFile *obj);

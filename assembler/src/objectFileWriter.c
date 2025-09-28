@@ -11,13 +11,11 @@
 #define VERSION "1.0.0"
 #define DEFINED_TRUE 1
 #define DEFINED_FALSE 0
-#define RELOC_ABSOLUTE 0
-#define RELOC_RELATIVE 1
 
 #define SEGMENT_SIZE 32
 #define HEADER_SIZE 16 // + (SEGMENT_SIZE * numSegments)
 
-struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable *segTable) {
+struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable *segTable, struct RelocationTable *relocTable) {
     struct ObjectFile objectFile;
     objectFile.header.magic = 0x4E384F46;
     strcpy(objectFile.header.version, VERSION);
@@ -52,11 +50,15 @@ struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable
         objectFile.symbolTable.symbols[i].defined = sTable->data[i].defined;
     }
 
-    objectFile.relocationTable.numRelocations = 1; // TODO placeholder
-    objectFile.relocationTable.relocations = malloc(sizeof(struct RelocationEntry) * 1);
-    objectFile.relocationTable.relocations[0].segment_offset = 0;
-    strcpy(objectFile.relocationTable.relocations[0].name, "placeholder");
-    objectFile.relocationTable.relocations[0].type = RELOC_ABSOLUTE; // TODO end - placeholder
+    objectFile.relocationTable.numRelocations = relocTable->numRelocations;
+    objectFile.relocationTable.relocations = malloc(sizeof(struct RelocationEntry) * relocTable->numRelocations);
+    for (int i = 0; i < relocTable->numRelocations; i++) {
+        memset(objectFile.relocationTable.relocations[i].name, 0, 16);
+        strcpy(objectFile.relocationTable.relocations[i].name, relocTable->relocations[i].name);
+        objectFile.relocationTable.relocations[i].segment_index = relocTable->relocations[i].segment_index;
+        objectFile.relocationTable.relocations[i].segment_offset = relocTable->relocations[i].segment_offset;
+        objectFile.relocationTable.relocations[i].type = relocTable->relocations[i].type;
+    }
 
     return objectFile;
 }
