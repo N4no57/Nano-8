@@ -29,7 +29,7 @@ void consume_token(int *tok_idx, Token *t, const TokenList *tok_list) {
     (*tok_idx)++;
 }
 
-Token peek(int *tok_idx, TokenList *tok_list, int n) {
+Token peek(const int *tok_idx, const TokenList *tok_list, const int n) {
     if (*tok_idx+n >= tok_list->count) {
         fprintf(stderr, "Out of tokens\n");
         exit(1);
@@ -54,6 +54,33 @@ int is_base_mod(Token t) {
         }
     }
     return 0;
+}
+
+ParsedOperand get_reg_pair(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok) {
+    ParsedOperand result = {0, {{0}}};
+
+    consume_token(tok_idx, current_tok, tokens); // consume "("
+    if (current_tok->type == TOKEN_REGISTER) { // expect another reg after a ","
+        result.kind = INDIRECT_REG;
+        int reg = 0;
+        reg = get_reg(current_tok->str_val);
+        if (reg == -1) {
+            printf("Invalid register\n");
+            exit(1);
+        }
+        result.mem_pair.reg_high = reg;
+        consume_token(tok_idx, current_tok, tokens);
+        consume_token(tok_idx, current_tok, tokens);
+        reg = get_reg(current_tok->str_val);
+        if (reg == -1) {
+            printf("Invalid register\n");
+            exit(1);
+        }
+        result.mem_pair.reg_low = reg;
+        consume_token(tok_idx, current_tok, tokens);
+        consume_token(tok_idx, current_tok, tokens);
+    }
+    return result;
 }
 
 // parses tokens until it reaches a "," then returns the parsed operand
