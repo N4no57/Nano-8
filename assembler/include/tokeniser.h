@@ -6,7 +6,6 @@
 #define TOKENISER_H
 
 #include <stdint.h>
-#include "symbolTable.h"
 
 #define MAX_LINE_LENGTH 1024
 
