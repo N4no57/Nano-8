@@ -7,6 +7,48 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void initSegmentTable(AssemblingSegmentTable *table) {
+    table->capacity = 8;
+    table->count = 0;
+    table->segments = malloc(table->capacity * sizeof(AssemblingSegment));
+    if (!table->segments) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void appendSegment(AssemblingSegmentTable *table, const AssemblingSegment segment) {
+    if (table->count >= table->capacity) {
+        table->capacity *= 2;
+        AssemblingSegment *tmp = realloc(table->segments, table->capacity * sizeof(AssemblingSegment));
+        if (tmp == NULL) {
+            perror("realloc");
+            freeSegmentTable(table);
+            exit(EXIT_FAILURE);
+        }
+        table->segments = tmp;
+    }
+
+    table->segments[table->count] = segment;
+    table->count++;
+}
+
+AssemblingSegment *find_segment(const AssemblingSegmentTable *table, const char *name) {
+    for (int i = 0; i < table->count; i++) {
+        if (strcmp(table->segments[i].name, name) == 0) {
+            return &table->segments[i];
+        }
+    }
+    return NULL;
+}
+
+void freeSegmentTable(const AssemblingSegmentTable *table) {
+    for (int i = 0; i < table->count; i++) {
+        free(table->segments[i].data);
+    }
+    free(table->segments);
+}
+
 int get_reg(const char *s) {
     if (strcmp(s, "r0") == 0) return 0;
     if (strcmp(s, "r1") == 0) return 1;
