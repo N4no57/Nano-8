@@ -7,4 +7,5 @@ add_executable(assembler src/main.c
         src/symbolTable.c include/symbolTable.h
         src/instructionDef.c include/instructionDef.h
         src/tokeniser.c include/tokeniser.h
+        include/utils.h
 )
