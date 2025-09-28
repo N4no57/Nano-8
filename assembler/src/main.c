@@ -234,14 +234,6 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 		// fallback - consume
 		consume_token(&tok_idx, &current_token, tokens);
 	}
-
-	for (size_t i = 0; i < segment_table->count; i++) {
-		printf("Segment %s hexdump:", segment_table->segments[i].name);
-		for (size_t j = 0; j < segment_table->segments[i].size; j++) {
-			printf(" %02x", segment_table->segments[i].data[j]);
-		}
-		printf("\n");
-	}
 }
 
 void free_lines(char **lines, const int num_lines) {
@@ -325,7 +317,7 @@ int main() {
 
 	struct ObjectFile obj = generateFileStruct(&symbol_table, &segmentTable, &relocationTable);
 	dumpObjectFile(&obj);
-	writeObjectFile(&obj, "test.bin");
+	writeObjectFile(&obj, "out.o");
 
 	// free everything
 	free_obj:
