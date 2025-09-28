@@ -112,29 +112,52 @@ TokenList tokenise(char **lines) {
             // symbols
             if (line[i] == ',' || line[i] == ':' ||
                 line[i] == '(' || line[i] == ')' ||
-                line[i] == '[' || line[i] == ']' ||
-                line[i] == '#' || line[i] == '$') {
+                line[i] == '[' || line[i] == ']' ) {
                 const Token t = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
                 token_list_push(&token_list, t);
                 i++;
                 continue;
             }
 
-            // number
+            // number, immediate
+            if (line[i] == '#') {
+                const Token t1 = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
+                token_list_push(&token_list, t1);
+                i++;
+                int ishex = 0;
+                int base = 10;
+                if (line[i] == '$' || line[i] == '%') { // "#" token most likely proceeded by these
+                    if (line[i] == '$') ishex = 1;
+                    base = get_base(line[i]);
+                    const Token t2 = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
+                    token_list_push(&token_list, t2);
+                    i++;
+                } // if not continue to number
+                char buff[64]; int bi = 0;
+                if (ishex && isalpha(line[i])) {
+                    while (isalnum(line[i])) {
+                        buff[bi++] = line[i++];
+                    }
+                    buff[bi] = '\0';
+                } if (!ishex && isdigit(line[i])) { // binary or decimal, both fall under this loop
+                    while (isdigit(line[i])) {
+                        buff[bi++] = line[i++];
+                    }
+                    buff[bi] = '\0';
+                }
+                const Token t3 = { .type = TOKEN_NUMBER, .int_value =  strtol(buff, NULL, base) };
+                token_list_push(&token_list, t3);
+                continue;
+            }
+
+            // number, no base modifier
             if (isdigit(line[i])) {
                 char buff[64]; int bi = 0;
                 while (isxdigit(line[i])) {
                     buff[bi++] = line[i++];
                 }
                 buff[bi] = '\0';
-                int num;
-                const Token prev_token = token_list.data[token_list.count-1];
-                if (is_base_mod(prev_token)) {
-                    num = strtol(buff, NULL, get_base(prev_token.str_val[0]));
-                } else {
-                    num = strtol(buff, NULL, 10);
-                }
-                const Token t = { .type = TOKEN_NUMBER, .int_value = num };
+                const Token t = { .type = TOKEN_NUMBER, .int_value = strtol(buff, NULL, 10) };
                 token_list_push(&token_list, t);
                 continue;
             }
