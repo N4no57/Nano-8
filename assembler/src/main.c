@@ -73,7 +73,7 @@ ParsedOperand parse_operand(const TokenList *tokens, SymbolTable *symbol_table, 
 	ParsedOperand operand = {0, {0}};
 
 	while (current_tok->type != TOKEN_EOF && current_tok->type != TOKEN_MNEMONIC &&
-		(current_tok->type != TOKEN_SYMBOL && strcmp(current_tok->str_val, ",") != 0)) {
+		!(current_tok->type == TOKEN_SYMBOL && current_tok->str_val[0] == ',')) {
 		// go through and find out what argument this is and if it is part of a bigger piece or a standalone
 		// e.g. R0 -> enum REGISTER, #1023 -> enum IMMEDIATE and so on
 		switch (current_tok->type) {
@@ -98,8 +98,18 @@ ParsedOperand parse_operand(const TokenList *tokens, SymbolTable *symbol_table, 
 							exit(1);
 						}
 						operand.mem_pair.reg_low = reg;
-						break;
+						consume_token(tok_idx, current_tok, tokens);
+						consume_token(tok_idx, current_tok, tokens);
 					}
+				} else if (current_tok->str_val[0] == '$') {
+					operand.kind = ABSOLUTE;
+					consume_token(tok_idx, current_tok, tokens); // next token expected to be number token
+					if (current_tok->type != TOKEN_NUMBER) {
+						printf("Invalid token\n");
+						exit(1);
+					}
+					operand.imm = current_tok->int_value;
+					consume_token(tok_idx, current_tok, tokens);
 				}
 				break;
 			case TOKEN_REGISTER:
@@ -146,12 +156,12 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 			const InstructionDef *inst = find_instruction(instruction_table, table_size, current_token.str_val);
 			consume_token(&tok_idx, &current_token, tokens);
 
-			Token operands[32];
+			ParsedOperand operands[32];
 			int operand_count = 0;
 
 			while (current_token.type != TOKEN_MNEMONIC && current_token.type != TOKEN_EOF) {
-				operands[operand_count++] = current_token;
-				consume_token(&tok_idx, &current_token, tokens);
+				operands[operand_count++] = parse_operand(tokens, symbol_table, &tok_idx, &current_token);
+				if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ',') consume_token(&tok_idx, &current_token, tokens);
 				if (current_token.type == TOKEN_EOF) break;
 				if (operand_count >= 32) {
 					fprintf(stderr, "Too many operands\n");
@@ -159,7 +169,7 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 				}
 			}
 
-			current_address += inst->get_size(operands, operand_count, inst->operand_count);
+			current_address += inst->get_size(operand_count, inst->operand_count, operands);
 
 			continue;
 		}
@@ -200,12 +210,12 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 			const InstructionDef *inst = find_instruction(instruction_table, table_size, current_token.str_val);
 			consume_token(&tok_idx, &current_token, tokens);
 
-			Token operands[32];
+			ParsedOperand operands[32];
 			int operand_count = 0;
 
 			while (current_token.type != TOKEN_MNEMONIC && current_token.type != TOKEN_EOF) {
-				operands[operand_count++] = current_token;
-				consume_token(&tok_idx, &current_token, tokens);
+				operands[operand_count++] = parse_operand(tokens, table, &tok_idx, &current_token);
+				if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ',') consume_token(&tok_idx, &current_token, tokens);
 				if (current_token.type == TOKEN_EOF) break;
 				if (operand_count >= 32) {
 					fprintf(stderr, "Too many operands\n");
@@ -213,7 +223,7 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 				}
 			}
 
-			current_address += inst->get_size(operands, operand_count, inst->operand_count);
+			current_address += inst->get_size(operand_count, inst->operand_count, operands);
 			inst->encode(inst->base_opcode, operand_count, binary, &binary_index, operands);
 
 			continue;
@@ -223,7 +233,10 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 		consume_token(&tok_idx, &current_token, tokens);
 	}
 
-	if (binary_index != *num_bytes) fprintf(stderr, "Warning: binary size mismatch %u != %u\n", binary_index, *num_bytes);
+	if (binary_index != *num_bytes) {
+		fprintf(stderr, "Warning: binary size mismatch %u != %u\n", binary_index, *num_bytes);
+		exit(1);
+	}
 
 
 	printf("Assembled Binary:\n");
