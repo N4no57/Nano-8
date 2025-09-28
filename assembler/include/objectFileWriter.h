@@ -39,8 +39,8 @@ struct ObjSymbolTable {
 };
 
 struct RelocationEntry {
-    uint16_t segment_offset;
     char name[16];
+    uint16_t segment_offset;
     uint8_t type;
 };
 
@@ -57,6 +57,8 @@ struct ObjectFile {
 };
 
 struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable *segTable);
+void freeObjectFile(const struct ObjectFile *obj);
+void writeObjectFile(const struct ObjectFile *objectFile, const char *fileName);
 void dumpObjectFile(const struct ObjectFile *obj);
 
 #endif //OBJECT_FILE_H
