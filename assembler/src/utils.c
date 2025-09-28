@@ -85,7 +85,7 @@ ParsedOperand get_reg_pair(const TokenList *tokens, SymbolTable *symbol_table, i
 
 // parses tokens until it reaches a "," then returns the parsed operand
 ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok) {
-    ParsedOperand operand = {0, {0}};
+    ParsedOperand operand = {0, {{0}}};
 
     while (current_tok->type != TOKEN_EOF && current_tok->type != TOKEN_MNEMONIC &&
         !(current_tok->type == TOKEN_SYMBOL && current_tok->str_val[0] == ',')) {
@@ -97,23 +97,19 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                 if (current_tok->str_val[0] == '(') { // indirect reg/mem
                     consume_token(tok_idx, current_tok, tokens); // consume "("
                     if (current_tok->type == TOKEN_REGISTER) { // expect another reg after a ","
-                        operand.kind = INDIRECT_REG;
-                        int reg = 0;
-                        reg = get_reg(current_tok->str_val);
-                        if (reg == -1) {
-                            printf("Invalid register\n");
+                        operand = get_reg_pair(tokens, symbol_table, tok_idx, current_tok);
+                    } else if (is_base_mod(*current_tok)) {
+                        consume_token(tok_idx, current_tok, tokens);
+                        operand.kind = INDIRECT_MEM;
+                        if (current_tok->type != TOKEN_NUMBER) {
+                            printf("Invalid token\n");
                             exit(1);
                         }
-                        operand.mem_pair.reg_high = reg;
+                        operand.imm = current_tok->int_value;
                         consume_token(tok_idx, current_tok, tokens);
-                        consume_token(tok_idx, current_tok, tokens);
-                        reg = get_reg(current_tok->str_val);
-                        if (reg == -1) {
-                            printf("Invalid register\n");
-                            exit(1);
-                        }
-                        operand.mem_pair.reg_low = reg;
-                        consume_token(tok_idx, current_tok, tokens);
+                    } else if (current_tok->type == TOKEN_NUMBER) {
+                        operand.kind = INDIRECT_MEM;
+                        operand.imm = current_tok->int_value;
                         consume_token(tok_idx, current_tok, tokens);
                     }
                     return operand;
