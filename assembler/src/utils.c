@@ -40,8 +40,10 @@ int get_base(char c) {
 }
 
 int is_base_mod(Token t) {
-    if (t.str_val[0] == '$' || t.str_val[0] == '%') {
-        return 1;
+    if (t.type == TOKEN_SYMBOL) {
+        if (t.str_val[0] == '$' || t.str_val[0] == '%') {
+            return 1;
+        }
     }
     return 0;
 }
@@ -79,10 +81,10 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                         consume_token(tok_idx, current_tok, tokens);
                         consume_token(tok_idx, current_tok, tokens);
                     }
-                } else if (is_base_mod(*current_tok)) { // check if base modifier succeeded by a number token
+                } else if (is_base_mod(*current_tok)) { // check if base modifier, expect to be succeeded by a number token
                     operand.kind = ABSOLUTE;
                     consume_token(tok_idx, current_tok, tokens); // next token expected to be number token
-                    if (current_tok->type != TOKEN_NUMBER) {
+                    if (current_tok->type != TOKEN_NUMBER) { // check if not
                         printf("Invalid token\n");
                         exit(1);
                     }
@@ -91,7 +93,9 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                     consume_token(tok_idx, current_tok, tokens);
                 } else if (current_tok->str_val[0] == '#') { // check if immediate value
                     // may be succeeded by base modifier
-
+                    operand.kind = IMMEDIATE;
+                    consume_token(tok_idx, current_tok, tokens);
+                    if (current_tok->type) {}
                 }
             break;
             case TOKEN_REGISTER:
