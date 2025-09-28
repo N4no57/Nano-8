@@ -65,37 +65,47 @@ uint16_t get_size_nop(int operand_count, int expected_operand_count, ParsedOpera
     return 1;
 }
 
-void encode_mov(uint8_t base_opcode, int operand_count, uint8_t *out, uint16_t *binary_index, ParsedOperand operands[]) {
+void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, ParsedOperand operands[]) {
+    if (seg->size+5 >= seg->capacity) {
+        seg->capacity *= 2;
+        uint8_t *temp = realloc(seg->data, seg->capacity);
+        if (!temp) {
+            fprintf(stderr, "Error: out of memory\n");
+            exit(1);
+        }
+        seg->data = temp;
+    }
+
     if (operands[0].kind == REGISTER && operands[1].kind == REGISTER) {
-        out[(*binary_index)++] = base_opcode;
-        out[(*binary_index)++] = (operands[0].reg << 4) + operands[1].reg;
+        seg->data[seg->size++] = base_opcode;
+        seg->data[seg->size++] = (operands[0].reg << 4) + operands[1].reg;
         return;
     }
     if (operands[0].kind == REGISTER && operands[1].kind == IMMEDIATE) {
-        out[(*binary_index)++] = base_opcode + 0b00000100;
-        out[(*binary_index)++] = operands[0].reg << 4;
-        out[(*binary_index)++] = (uint8_t)operands[1].imm;
+        seg->data[seg->size++] = base_opcode + 0b00000100;
+        seg->data[seg->size++] = operands[0].reg << 4;
+        seg->data[seg->size++] = (uint8_t)operands[1].imm;
         return;
     }
     if (operands[0].kind == REGISTER && operands[1].kind == ABSOLUTE) {
-        out[(*binary_index)++] = base_opcode + 0b00001000;
-        out[(*binary_index)++] = operands[0].reg << 4;
-        out[(*binary_index)++] = operands[1].imm & 0xFF;
-        out[(*binary_index)++] = operands[1].imm >> 8 & 0xFF;
+        seg->data[seg->size++] = base_opcode + 0b00001000;
+        seg->data[seg->size++] = operands[0].reg << 4;
+        seg->data[seg->size++] = operands[1].imm & 0xFF;
+        seg->data[seg->size++] = operands[1].imm >> 8 & 0xFF;
         return;
     }
     if (operands[0].kind == REGISTER && operands[1].kind == INDIRECT_REG) {
-        out[(*binary_index)++] = base_opcode + 0b00001100;
-        out[(*binary_index)++] = operands[0].reg << 4;
-        out[(*binary_index)++] = operands[1].mem_pair.reg_high << 4 | operands[1].mem_pair.reg_low;
+        seg->data[seg->size++] = base_opcode + 0b00001100;
+        seg->data[seg->size++] = operands[0].reg << 4;
+        seg->data[seg->size++] = operands[1].mem_pair.reg_high << 4 | operands[1].mem_pair.reg_low;
         return;
     }
     if (operands[0].kind == REGISTER && operands[1].kind == INDEXED_MEM) {
-        out[(*binary_index)++] = base_opcode + 0b00010000;
-        out[(*binary_index)++] = operands[0].reg << 4;
-        out[(*binary_index)++] = operands[1].mem_pair.reg_high << 4 | operands[1].mem_pair.reg_low;
-        out[(*binary_index)++] = operands[1].mem_pair.offset & 0xFF;
-        out[(*binary_index)++] = operands[1].mem_pair.offset >> 8 & 0xFF;
+        seg->data[seg->size++] = base_opcode + 0b00010000;
+        seg->data[seg->size++] = operands[0].reg << 4;
+        seg->data[seg->size++] = operands[1].mem_pair.reg_high << 4 | operands[1].mem_pair.reg_low;
+        seg->data[seg->size++] = operands[1].mem_pair.offset & 0xFF;
+        seg->data[seg->size++] = operands[1].mem_pair.offset >> 8 & 0xFF;
         return;
     }
     if (operands[0].kind == ABSOLUTE && operands[1].kind == REGISTER) { // TODO
@@ -109,10 +119,28 @@ void encode_mov(uint8_t base_opcode, int operand_count, uint8_t *out, uint16_t *
     }
 }
 
-void encode_hlt(const uint8_t base_opcode, int operand_count, uint8_t *out, uint16_t *binary_index, ParsedOperand operands[]) {
-    out[(*binary_index)++] = base_opcode;
+void encode_hlt(const uint8_t base_opcode, int operand_count, AssemblingSegment *seg, ParsedOperand operands[]) {
+    if (seg->size >= seg->capacity) {
+        seg->capacity *= 2;
+        uint8_t *temp = realloc(seg->data, seg->capacity);
+        if (!temp) {
+            fprintf(stderr, "Error: out of memory\n");
+            exit(1);
+        }
+        seg->data = temp;
+    }
+    seg->data[seg->size++] = base_opcode;
 }
 
-void encode_nop(const uint8_t base_opcode, int operand_count, uint8_t *out, uint16_t *binary_index, ParsedOperand operands[]) {
-    out[(*binary_index)++] = base_opcode;
+void encode_nop(const uint8_t base_opcode, int operand_count, AssemblingSegment *seg, ParsedOperand operands[]) {
+    if (seg->size >= seg->capacity) {
+        seg->capacity *= 2;
+        uint8_t *temp = realloc(seg->data, seg->capacity);
+        if (!temp) {
+            fprintf(stderr, "Error: out of memory\n");
+            exit(1);
+        }
+        seg->data = temp;
+    }
+    seg->data[seg->size++] = base_opcode;
 }
