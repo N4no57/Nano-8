@@ -5,6 +5,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include "symbolTable.h"
 #include "tokeniser.h"
 
 typedef struct {
@@ -20,24 +21,6 @@ typedef struct {
     };
 } ParsedOperand;
 
-typedef struct {
-    char name[16];
-    uint8_t *data;
-    size_t size;
-    size_t capacity;
-} AssemblingSegment;
-
-typedef struct {
-    AssemblingSegment *segments;
-    size_t count;
-    size_t capacity;
-} AssemblingSegmentTable;
-
-void initSegmentTable(AssemblingSegmentTable *table);
-void appendSegment(AssemblingSegmentTable *table, AssemblingSegment segment);
-int find_segment(const AssemblingSegmentTable *table, AssemblingSegment **seg, const char *name);
-void freeSegmentTable(const AssemblingSegmentTable *table);
-
 int get_reg(const char *s);
 
 void consume_token(int *tok_idx, Token *t, const TokenList *tok_list);
@@ -47,6 +30,6 @@ int get_base(char c);
 int is_base_mod(Token t);
 
 // parses tokens until it reaches a "," then returns the parsed operand
-inline ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok);
+ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok);
 
 #endif //UTILS_H
