@@ -10,8 +10,10 @@
 
 #define VERSION "1.0.0"
 
-#define SEGMENT_SIZE 32
-#define HEADER_SIZE 16 // + (SEGMENT_SIZE * numSegments)
+#define HAVE_PADDING 1
+
+#define SEGMENT_SIZE (HAVE_PADDING ? 32 : 22)
+#define HEADER_SIZE (HAVE_PADDING ? 16 : 12) // + (SEGMENT_SIZE * numSegments)
 
 struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable *segTable, struct RelocationTable *relocTable) {
     struct ObjectFile objectFile;
@@ -80,7 +82,7 @@ void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
     fwrite(&obj->header.magic, sizeof(obj->header.magic), 1, f);
     fwrite(&obj->header.version, sizeof(obj->header.version), 1, f);
     fwrite(&obj->header.segmentTable.numSegments, sizeof(obj->header.segmentTable.numSegments), 1, f);
-    fwrite(padding, 4, 1, f); // padding
+    if (HAVE_PADDING) fwrite(padding, 4, 1, f); // padding
 
     int data_size = 0;
 
@@ -89,30 +91,31 @@ void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
         fwrite(obj->header.segmentTable.entries[i].name, sizeof(obj->header.segmentTable.entries[i].name), 1, f);
         fwrite(&obj->header.segmentTable.entries[i].size, sizeof(obj->header.segmentTable.entries[i].size), 1, f);
         fwrite(&obj->header.segmentTable.entries[i].file_offset, sizeof(obj->header.segmentTable.entries[i].file_offset), 1, f);
-        fwrite(padding, 10, 1, f); // padding
+        if (HAVE_PADDING) fwrite(padding, 10, 1, f); // padding
     }
 
     fwrite(obj->Data, data_size, 1, f);
 
-    const int padding_required = data_size % 16;
+    int pad = (16 - (data_size % 16) - 2) % 16;
+    if (pad < 1) pad += 16;
+    if (HAVE_PADDING) fwrite(padding, pad, 1, f);
 
-    if (padding_required) {
-        fwrite(padding, 16 - (padding_required + sizeof(obj->symbolTable.numSymbols)), 1, f);
-    }
-
-    fwrite(&obj->symbolTable.numSymbols, sizeof(obj->symbolTable.numSymbols), 1, f);
+    if (HAVE_PADDING) fwrite(&obj->symbolTable.numSymbols, sizeof(obj->symbolTable.numSymbols), 1, f);
     for (int i = 0; i < obj->symbolTable.numSymbols; i++) {
         fwrite(obj->symbolTable.symbols[i].name, sizeof(obj->symbolTable.symbols[i].name), 1, f);
         fwrite(&obj->symbolTable.symbols[i].segment_index, sizeof(obj->symbolTable.symbols[i].segment_index), 1, f);
         fwrite(&obj->symbolTable.symbols[i].segment_offset, sizeof(obj->symbolTable.symbols[i].segment_offset), 1, f);
         fwrite(&obj->symbolTable.symbols[i].defined, sizeof(obj->symbolTable.symbols[i].defined), 1, f);
+        fwrite(padding, 11, 1, f);
     }
 
     fwrite(&obj->relocationTable.numRelocations, sizeof(obj->relocationTable.numRelocations), 1, f);
+    if (HAVE_PADDING) fwrite(padding, 14, 1, f);
     for (int i = 0; i < obj->relocationTable.numRelocations; i++) {
         fwrite(obj->relocationTable.relocations[i].name, sizeof(obj->relocationTable.relocations[i].name), 1, f);
         fwrite(&obj->relocationTable.relocations[i].segment_offset, sizeof(obj->relocationTable.relocations[i].segment_offset), 1, f);
         fwrite(&obj->relocationTable.relocations[i].type, sizeof(obj->relocationTable.relocations[i].type), 1, f);
+        if (HAVE_PADDING) fwrite(padding, 13, 1, f);
     }
 
     fclose(f);
