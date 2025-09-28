@@ -68,6 +68,48 @@ void freeObjectFile(const struct ObjectFile *obj) {
     free(obj->relocationTable.relocations);
 }
 
+void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
+    FILE *f = fopen(fileName, "wb");
+    if (!f) {
+        perror("Failed to open file");
+        exit(1);
+    }
+
+    fwrite(&obj->header.magic, sizeof(obj->header.magic), 1, f);
+    fwrite(&obj->header.version, sizeof(obj->header.version), 1, f);
+    fwrite(&obj->header.segmentTable.numSegments, sizeof(obj->header.segmentTable.numSegments), 1, f);
+    fwrite("\0\0\0\0", 4, 1, f); // padding
+
+    int data_size = 0;
+
+    for (int i = 0; i < obj->header.segmentTable.numSegments; i++) {
+        data_size += obj->header.segmentTable.entries[i].size;
+        fwrite(obj->header.segmentTable.entries[i].name, sizeof(obj->header.segmentTable.entries[i].name), 1, f);
+        fwrite(&obj->header.segmentTable.entries[i].size, sizeof(obj->header.segmentTable.entries[i].size), 1, f);
+        fwrite(&obj->header.segmentTable.entries[i].file_offset, sizeof(obj->header.segmentTable.entries[i].file_offset), 1, f);
+        fwrite("\0\0\0\0\0\0\0\0\0\0", 10, 1, f); // padding
+    }
+
+    fwrite(obj->Data, sizeof(obj->Data), 1, f);
+
+    fwrite(&obj->symbolTable.numSymbols, data_size, 1, f);
+    for (int i = 0; i < obj->symbolTable.numSymbols; i++) {
+        fwrite(obj->symbolTable.symbols[i].name, sizeof(obj->symbolTable.symbols[i].name), 1, f);
+        fwrite(&obj->symbolTable.symbols[i].segment_index, sizeof(obj->symbolTable.symbols[i].segment_index), 1, f);
+        fwrite(&obj->symbolTable.symbols[i].segment_offset, sizeof(obj->symbolTable.symbols[i].segment_offset), 1, f);
+        fwrite(&obj->symbolTable.symbols[i].defined, sizeof(obj->symbolTable.symbols[i].defined), 1, f);
+    }
+
+    fwrite(&obj->relocationTable.numRelocations, sizeof(obj->relocationTable.numRelocations), 1, f);
+    for (int i = 0; i < obj->relocationTable.numRelocations; i++) {
+        fwrite(obj->relocationTable.relocations[i].name, sizeof(obj->relocationTable.relocations[i].name), 1, f);
+        fwrite(&obj->relocationTable.relocations[i].segment_offset, sizeof(obj->relocationTable.relocations[i].segment_offset), 1, f);
+        fwrite(&obj->relocationTable.relocations[i].type, sizeof(obj->relocationTable.relocations[i].type), 1, f);
+    }
+
+    fclose(f);
+}
+
 void dumpObjectFile(const struct ObjectFile *obj) {
     printf("=== Nano-8 Object File ===\n");
     printf("Magic: 0x%08X\n", obj->header.magic);
