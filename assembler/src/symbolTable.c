@@ -13,7 +13,7 @@ void init_table(SymbolTable *table) {
     table->data = malloc(table->capacity * sizeof(Symbol));
 }
 
-void add_symbol(SymbolTable *table, const char *label, const uint16_t address) {
+void add_symbol(SymbolTable *table, AssemblingSegment *seg, const char *label, const uint16_t offset) {
     if (table->count >= table->capacity) {
         table->capacity *= 2;
         Symbol *tmp = realloc(table->data, table->capacity * sizeof(Symbol));
@@ -25,7 +25,8 @@ void add_symbol(SymbolTable *table, const char *label, const uint16_t address) {
     }
 
     table->data[table->count].label = strdup(label);
-    table->data[table->count].address = address;
+    table->data[table->count].offset = offset;
+    table->data[table->count].segment = seg;
 
     table->count++;
 }
@@ -33,7 +34,7 @@ void add_symbol(SymbolTable *table, const char *label, const uint16_t address) {
 int find_symbol(const SymbolTable *table, const char *label, uint16_t *out_addr) {
     for (size_t i = 0; i < table->count; i++) {
         if (strcmp(table->data[i].label, label) == 0) {
-            *out_addr = table->data[i].address;
+            *out_addr = table->data[i].offset;
             return 1; // found
         }
     }
