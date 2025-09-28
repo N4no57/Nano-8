@@ -134,7 +134,7 @@ TokenList tokenise(char **lines) {
                     i++;
                 } // if not continue to number
                 char buff[64]; int bi = 0;
-                if (ishex && isalpha(line[i])) {
+                if (ishex && isalnum(line[i])) {
                     while (isalnum(line[i])) {
                         buff[bi++] = line[i++];
                     }
@@ -147,6 +147,28 @@ TokenList tokenise(char **lines) {
                 }
                 const Token t3 = { .type = TOKEN_NUMBER, .int_value =  strtol(buff, NULL, base) };
                 token_list_push(&token_list, t3);
+                continue;
+            }
+
+            if (line[i] == '$' || line[i] == '%') {
+                int ishex = line[i] == '$';
+                int base = get_base(line[i]);
+                const Token t1 = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
+                token_list_push(&token_list, t1);
+                i++;
+                char buff[64]; int bi = 0;
+                if (ishex && isalnum(line[i])) {
+                    while (isalnum(line[i])) {
+                        buff[bi++] = line[i++];
+                    }
+                } if (!ishex && isdigit(line[i])) { // binary or decimal, both fall under this loop
+                    while (isdigit(line[i])) {
+                        buff[bi++] = line[i++];
+                    }
+                }
+                buff[bi] = '\0';
+                const Token t2 = { .type = TOKEN_NUMBER, .int_value =  strtol(buff, NULL, base) };
+                token_list_push(&token_list, t2);
                 continue;
             }
 
