@@ -8,7 +8,7 @@
 #include "tokeniser.h"
 
 typedef struct {
-    enum { IMMEDIATE, REGISTER, ABSOLUTE, RELATIVE, INDIRECT_MEM, INDIRECT_REG, INDEXED_MEM} kind;
+    enum { NONE, IMMEDIATE, REGISTER, ABSOLUTE, RELATIVE, INDIRECT_MEM, INDIRECT_REG, INDEXED_MEM} kind;
     union {
         int imm; // can be an actual immediate, resolved register or memory address. interpretation dependent on instruction/operand
         int reg;
