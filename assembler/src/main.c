@@ -6,7 +6,8 @@
 
 #include "../include/instructionDef.h"
 #include "../include/symbolTable.h"
- #include "../include/tokeniser.h"
+#include "../include/tokeniser.h"
+#include "../include/utils.h"
 
 #define SYMBOL_TABLE_BASE_SIZE 16
 #define MAX_LINE_LENGTH 1024
@@ -40,6 +41,7 @@
 // };
 
 InstructionDef instruction_table[] = {
+	{ "mov", 0x00, 2, encode_mov, get_size_mov },
 	{ "hlt", 0x03, 0, encode_hlt, get_size_hlt },
 	{ "nop", 0x13, 0, encode_nop, get_size_nop }
 };
@@ -53,6 +55,20 @@ void consume_token(int *tok_idx, Token *t, const TokenList *tok_list) {
 	*t = tok_list->data[*tok_idx];
 	(*tok_idx)++;
 }
+
+int get_reg(const char *s) {
+	if (strcmp(s, "r0") == 0) return 0;
+	if (strcmp(s, "r1") == 0) return 1;
+	if (strcmp(s, "r2") == 0) return 2;
+	if (strcmp(s, "r3") == 0) return 3;
+	if (strcmp(s, "pc") == 0) return 12;
+	if (strcmp(s, "sp") == 0) return 13;
+	if (strcmp(s, "bp") == 0) return 14;
+	if (strcmp(s, "h") == 0) return 15;
+	if (strcmp(s, "l") == 0) return 16;
+	return -1;
+}
+
 
 void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *num_bytes) {
 	uint16_t current_address = 0;
