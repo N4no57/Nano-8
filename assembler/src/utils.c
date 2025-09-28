@@ -3,9 +3,30 @@
 //
 
 #include "../include/utils.h"
+#include "../include/segments.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+void relocationTableAppend(struct RelocationTable *relocTable, const char *name,
+    const uint16_t segment_index, const uint16_t segment_offset, const uint8_t type) {
+    if (relocTable->numRelocations >= relocTable->capacity) {
+        relocTable->capacity *= 2;
+        struct RelocationEntry *tmp = realloc(relocTable->relocations, relocTable->capacity * sizeof(struct RelocationEntry));
+        if (!tmp) {
+            perror("malloc");
+            exit(EXIT_FAILURE);
+        }
+        relocTable->relocations = tmp;
+    }
+
+    strcpy(relocTable->relocations[relocTable->numRelocations].name, name);
+    relocTable->relocations[relocTable->numRelocations].segment_index = segment_index;
+    relocTable->relocations[relocTable->numRelocations].segment_offset = segment_offset;
+    relocTable->relocations[relocTable->numRelocations].type = type;
+
+    relocTable->numRelocations++;
+}
 
 int get_reg(const char *s) {
     if (strcmp(s, "r0") == 0) return 0;
@@ -57,7 +78,7 @@ int is_base_mod(Token t) {
 }
 
 ParsedOperand get_reg_pair(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok) {
-    ParsedOperand result = {0, {{0}}};
+    ParsedOperand result = {0, {0}};
 
     consume_token(tok_idx, current_tok, tokens); // consume "("
     if (current_tok->type == TOKEN_REGISTER) { // expect another reg after a ","
