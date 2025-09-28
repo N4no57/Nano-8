@@ -27,6 +27,7 @@ void add_symbol(SymbolTable *table, AssemblingSegment *seg, const char *label, c
     table->data[table->count].label = strdup(label);
     table->data[table->count].offset = offset;
     table->data[table->count].segment = seg;
+    table->data[table->count].defined = 1;
 
     table->count++;
 }
