@@ -47,7 +47,7 @@ InstructionDef instruction_table[] = {
 };
 int table_size = sizeof(instruction_table) / sizeof(InstructionDef);
 
-void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *num_bytes) {
+void first_pass(const TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentTable *segment_table, uint16_t *num_bytes) {
 	uint16_t current_address = 0;
 	int tok_idx = 0;
 	Token current_token;
@@ -75,6 +75,10 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 				consume_token(&tok_idx, &current_token, tokens);
 				current_address++;
 				continue;
+			} else if (strcmp(current_token.str_val, ".segment") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
 			} else {
 				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
 				exit(1);
@@ -98,7 +102,8 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 				}
 			}
 
-			current_address += inst->get_size(operand_count, inst->operand_count, operands);
+			const uint8_t size = inst->get_size(operand_count, inst->operand_count, operands);
+			current_address += size;
 
 			continue;
 		}
@@ -110,15 +115,11 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 	*num_bytes = current_address;
 }
 
-uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t *num_bytes) {
+void second_pass(const TokenList *tokens, SymbolTable *table, AssemblingSegmentTable *segment_table, const uint16_t *num_bytes) {
 	int tok_idx = 0;
 
-	uint16_t binary_index = 0;
-	uint8_t *binary = malloc(*num_bytes);
-	if (binary == NULL) {
-		perror("malloc");
-		exit(1);
-	}
+	AssemblingSegment *current_segment = 0;
+	find_segment(segment_table, &current_segment, "code");
 
 	Token current_token;
 	consume_token(&tok_idx, &current_token, tokens);
@@ -138,8 +139,42 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 			if (strcmp(current_token.str_val, ".db") == 0) {
 				consume_token(&tok_idx, &current_token, tokens);
 				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
-				binary[binary_index++] = current_token.int_value;
+
+				if (current_segment->size >= current_segment->capacity) {
+					current_segment->capacity *= 2;
+					uint8_t *temp = realloc(current_segment->data, current_segment->capacity);
+					if (!temp) {
+						fprintf(stderr, "Error: out of memory\n");
+						exit(1);
+					}
+					current_segment->data = temp;
+				}
+
+				current_segment->data[current_segment->size++] = current_token.int_value;
 				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			} else if (strcmp(current_token.str_val, ".segment") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				char segName[16];
+				strcpy(segName, current_token.str_val);
+				consume_token(&tok_idx, &current_token, tokens);
+				AssemblingSegment *tmp = 0;
+				if (find_segment(segment_table, &tmp, segName)) { // check if desired segment exists
+					current_segment = tmp;
+					continue;
+				}
+				// create new segment and continue
+				AssemblingSegment s;
+				s.capacity = 8;
+				strcpy(s.name, segName);
+				s.size = 0;
+				s.data = malloc(s.capacity * sizeof(char *));
+				if (!s.data) {
+					perror("malloc");
+					exit(1);
+				}
+				appendSegment(segment_table, s);
+				current_segment = &segment_table->segments[segment_table->count-1];
 				continue;
 			} else {
 				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
@@ -164,7 +199,7 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 				}
 			}
 
-			inst->encode(inst->base_opcode, operand_count, binary, &binary_index, operands);
+			inst->encode(inst->base_opcode, operand_count, current_segment, operands);
 
 			continue;
 		}
@@ -173,18 +208,13 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 		consume_token(&tok_idx, &current_token, tokens);
 	}
 
-	if (binary_index != *num_bytes) {
-		fprintf(stderr, "Warning: binary size mismatch %u != %u\n", binary_index, *num_bytes);
-		exit(1);
+	for (size_t i = 0; i < segment_table->count; i++) {
+		printf("Segment %s hexdump:", segment_table->segments[i].name);
+		for (size_t j = 0; j < segment_table->segments[i].size; j++) {
+			printf(" %02x", segment_table->segments[i].data[j]);
+		}
+		printf("\n");
 	}
-
-
-	printf("Assembled Binary:\n");
-	for (int i = 0; i < binary_index; i++) {
-		printf("%02x ", binary[i]);
-	}
-
-	return binary;
 }
 
 void free_lines(char **lines, const int num_lines) {
@@ -208,6 +238,19 @@ int main() {
 
 	AssemblingSegmentTable segmentTable;
 	initSegmentTable(&segmentTable);
+	AssemblingSegment codeSegment;
+	codeSegment.capacity = 8;
+	strcpy(codeSegment.name, "code");
+	codeSegment.size = 0;
+	codeSegment.data = malloc(codeSegment.capacity * sizeof(uint8_t *));
+	if (!codeSegment.data) {
+		perror("malloc");
+		free_lines(lines, 0);
+		freeSegmentTable(&segmentTable);
+		free_table(&symbol_table);
+		return 1;
+	}
+	appendSegment(&segmentTable, codeSegment);
 
 	FILE *input = fopen("test.asm", "r");
 	if (!input) {
@@ -243,7 +286,7 @@ int main() {
 
 	uint16_t binary_size = 0;
 
-	first_pass(&tokens, &symbol_table, &binary_size);
+	first_pass(&tokens, &symbol_table, &segmentTable, &binary_size);
 
 	if (binary_size == 0) {
 		printf("Nothing to compile\n");
@@ -252,12 +295,11 @@ int main() {
 		return 1;
 	}
 
-	uint8_t *binary = second_pass(&tokens, &symbol_table, &binary_size);
+	second_pass(&tokens, &symbol_table, &segmentTable, &binary_size);
 
 	// free everything
 	freeTokenList(&tokens);
 	freeSegmentTable(&segmentTable);
-	free(binary);
 	free_table(&symbol_table);
 
 	return 0;
