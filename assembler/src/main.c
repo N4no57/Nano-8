@@ -69,6 +69,57 @@ int get_reg(const char *s) {
 	return -1;
 }
 
+ParsedOperand parse_operand(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok) {
+	ParsedOperand operand = {0, {0}};
+
+	while (current_tok->type != TOKEN_EOF && current_tok->type != TOKEN_MNEMONIC &&
+		(current_tok->type != TOKEN_SYMBOL && strcmp(current_tok->str_val, ",") != 0)) {
+		// go through and find out what argument this is and if it is part of a bigger piece or a standalone
+		// e.g. R0 -> enum REGISTER, #1023 -> enum IMMEDIATE and so on
+		switch (current_tok->type) {
+			// most verbose case. needs careful handling.
+			case TOKEN_SYMBOL:
+				if (current_tok->str_val[0] == '(') { // indirect reg/mem
+					consume_token(tok_idx, current_tok, tokens); // consume "("
+					if (current_tok->type == TOKEN_REGISTER) { // expect another reg after a ","
+						operand.kind = INDIRECT_REG;
+						int reg = 0;
+						reg = get_reg(current_tok->str_val);
+						if (reg == -1) {
+							printf("Invalid register\n");
+							exit(1);
+						}
+						operand.mem_pair.reg_high = reg;
+						consume_token(tok_idx, current_tok, tokens);
+						consume_token(tok_idx, current_tok, tokens);
+						reg = get_reg(current_tok->str_val);
+						if (reg == -1) {
+							printf("Invalid register\n");
+							exit(1);
+						}
+						operand.mem_pair.reg_low = reg;
+						break;
+					}
+				}
+				break;
+			case TOKEN_REGISTER:
+				operand.kind = REGISTER;
+				int reg = get_reg(current_tok->str_val);
+				if (reg == -1) {
+					printf("Invalid register\n");
+					exit(1);
+				}
+				operand.reg = reg;
+				consume_token(tok_idx, current_tok, tokens);
+				break;
+			case TOKEN_NUMBER:
+				break;
+			default: break;
+		}
+	}
+
+	return operand;
+}
 
 void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *num_bytes) {
 	uint16_t current_address = 0;
