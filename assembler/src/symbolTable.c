@@ -32,10 +32,10 @@ void add_symbol(SymbolTable *table, AssemblingSegment *seg, const char *label, c
     table->count++;
 }
 
-int find_symbol(const SymbolTable *table, const char *label, uint16_t *out_addr) {
+int find_symbol(const SymbolTable *table, const char *label, const Symbol *result) {
     for (size_t i = 0; i < table->count; i++) {
         if (strcmp(table->data[i].label, label) == 0) {
-            *out_addr = table->data[i].offset;
+            result = &table->data[i];
             return 1; // found
         }
     }
