@@ -8,4 +8,5 @@ add_executable(assembler src/main.c
         src/instructionDef.c include/instructionDef.h
         src/tokeniser.c include/tokeniser.h
         src/utils.c include/utils.h
+        src/objectFileWriter.c include/objectFileWriter.h
 )
