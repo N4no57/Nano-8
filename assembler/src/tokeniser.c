@@ -10,6 +10,8 @@
 #include <string.h>
 
 char *mnemonics[] = {
+    "mov",
+    "add",
     "hlt",
     "nop"
 };
@@ -106,7 +108,10 @@ TokenList tokenise(char **lines) {
             if (line[i] == ';') break;
 
             // symbols
-            if (line[i] == ',' || line[i] == ':') {
+            if (line[i] == ',' || line[i] == ':' ||
+                line[i] == '(' || line[i] == ')' ||
+                line[i] == '[' || line[i] == ']' ||
+                line[i] == '#' || line[i] == '$') {
                 const Token t = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
                 token_list_push(&token_list, t);
                 i++;
@@ -114,7 +119,7 @@ TokenList tokenise(char **lines) {
             }
 
             // number
-            if (isdigit(line[i]) || line[i] == '$') {
+            if (isdigit(line[i])) {
                 char buff[64]; int bi = 0;
                 if (line[i] == '$') i++;
                 while (isxdigit(line[i])) {
