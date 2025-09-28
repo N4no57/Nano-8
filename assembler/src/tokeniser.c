@@ -136,8 +136,8 @@ TokenList tokenise(char **lines) {
             if (line[i] == '#' || line[i] == '$' || line[i] == '%') {
                 const Token t1 = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
                 token_list_push(&token_list, t1);
+                int base = get_base(line[i]);
                 i++;
-                int base = 10;
                 if (line[i] == '$' || line[i] == '%') { // "#" token most likely proceeded by these
                     base = get_base(line[i]);
                     const Token t2 = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
@@ -150,13 +150,7 @@ TokenList tokenise(char **lines) {
 
             // number, no base modifier
             if (isdigit(line[i])) {
-                char buff[64]; int bi = 0;
-                while (isxdigit(line[i])) {
-                    buff[bi++] = line[i++];
-                }
-                buff[bi] = '\0';
-                const Token t = { .type = TOKEN_NUMBER, .int_value = strtol(buff, NULL, 10) };
-                token_list_push(&token_list, t);
+                parse_number(&token_list, line, &i, 10);
                 continue;
             }
 
