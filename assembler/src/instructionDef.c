@@ -77,7 +77,11 @@ void encode_mov(uint8_t base_opcode, int operand_count, uint8_t *out, uint16_t *
         out[(*binary_index)++] = (uint8_t)operands[1].imm;
         return;
     }
-    if (operands[0].kind == REGISTER && operands[1].kind == ABSOLUTE) { // TODO
+    if (operands[0].kind == REGISTER && operands[1].kind == ABSOLUTE) {
+        out[(*binary_index)++] = base_opcode + 0b00001000;
+        out[(*binary_index)++] = operands[0].reg << 4;
+        out[(*binary_index)++] = operands[1].imm & 0xFF;
+        out[(*binary_index)++] = operands[1].imm >> 8 & 0xFF;
         return;
     }
     if (operands[0].kind == REGISTER && operands[1].kind == INDIRECT_REG) { // TODO
