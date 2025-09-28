@@ -3,6 +3,7 @@
 //
 
 #include "../include/symbolTable.h"
+#include "../include/objectFileWriter.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -27,7 +28,7 @@ void add_symbol(SymbolTable *table, AssemblingSegment *seg, const char *label, c
     table->data[table->count].label = strdup(label);
     table->data[table->count].offset = offset;
     table->data[table->count].segment = seg;
-    table->data[table->count].defined = 1;
+    table->data[table->count].defined = DEFINED_TRUE;
 
     table->count++;
 }
