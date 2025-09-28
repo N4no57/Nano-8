@@ -14,8 +14,8 @@
 #define RELOC_ABSOLUTE 0
 #define RELOC_RELATIVE 1
 
-#define SEGMENT_SIZE 22
-#define HEADER_SIZE 12 // + (SEGMENT_SIZE * numSegments)
+#define SEGMENT_SIZE 32
+#define HEADER_SIZE 16 // + (SEGMENT_SIZE * numSegments)
 
 struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable *segTable) {
     struct ObjectFile objectFile;
@@ -27,9 +27,10 @@ struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable
     uint16_t dataSize = 0;
 
     for (int i = 0; i < segTable->count; i++) {
+        memset(objectFile.header.segmentTable.entries[i].name, 0, 16);
         strcpy(objectFile.header.segmentTable.entries[i].name, segTable->segments[i].name);
         objectFile.header.segmentTable.entries[i].size = segTable->segments[i].size;
-        objectFile.header.segmentTable.entries[i].file_offset = HEADER_SIZE + dataSize + (SEGMENT_SIZE * objectFile.header.segmentTable.numSegments); // TODO placeholder
+        objectFile.header.segmentTable.entries[i].file_offset = HEADER_SIZE + dataSize + (SEGMENT_SIZE * objectFile.header.segmentTable.numSegments);
         dataSize += segTable->segments[i].size;
     }
 
@@ -44,6 +45,7 @@ struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable
     objectFile.symbolTable.numSymbols = sTable->count;
     objectFile.symbolTable.symbols = malloc(sizeof(struct ObjSymbol) * sTable->count);
     for (int i = 0; i < sTable->count; i++) {
+        memset(objectFile.symbolTable.symbols[i].name, 0, 16);
         strcpy(objectFile.symbolTable.symbols[i].name, sTable->data[i].label);
         objectFile.symbolTable.symbols[i].segment_index = get_segment_index(segTable, sTable->data[i].segment);
         objectFile.symbolTable.symbols[i].segment_offset = sTable->data[i].offset;
@@ -51,7 +53,7 @@ struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable
     }
 
     objectFile.relocationTable.numRelocations = 1; // TODO placeholder
-    objectFile.relocationTable.relocations = malloc(sizeof(struct RelocationTable) * 1);
+    objectFile.relocationTable.relocations = malloc(sizeof(struct RelocationEntry) * 1);
     objectFile.relocationTable.relocations[0].segment_offset = 0;
     strcpy(objectFile.relocationTable.relocations[0].name, "placeholder");
     objectFile.relocationTable.relocations[0].type = RELOC_ABSOLUTE; // TODO end - placeholder
@@ -59,6 +61,12 @@ struct ObjectFile generateFileStruct(SymbolTable *sTable, AssemblingSegmentTable
     return objectFile;
 }
 
+void freeObjectFile(const struct ObjectFile *obj) {
+    free(obj->header.segmentTable.entries);
+    free(obj->Data);
+    free(obj->symbolTable.symbols);
+    free(obj->relocationTable.relocations);
+}
 
 void dumpObjectFile(const struct ObjectFile *obj) {
     printf("=== Nano-8 Object File ===\n");
