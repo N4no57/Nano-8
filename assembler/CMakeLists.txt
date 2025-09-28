@@ -10,4 +10,5 @@ add_executable(assembler src/main.c
         src/utils.c include/utils.h
         src/objectFileWriter.c include/objectFileWriter.h
         src/segments.c include/segments.h
+        src/assembler.c include/assembler.h
 )
