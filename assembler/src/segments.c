@@ -42,6 +42,15 @@ int find_segment(const AssemblingSegmentTable *table, AssemblingSegment **seg, c
     return 0;
 }
 
+int get_segment_index(const AssemblingSegmentTable *table, AssemblingSegment *segment) {
+    for (int i = 0; i < table->count; i++) {
+        if (strcmp(table->segments[i].name, segment->name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 void freeSegmentTable(const AssemblingSegmentTable *table) {
     for (int i = 0; i < table->count; i++) {
         free(table->segments[i].data);

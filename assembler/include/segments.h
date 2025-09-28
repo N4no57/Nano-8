@@ -23,6 +23,7 @@ typedef struct {
 void initSegmentTable(AssemblingSegmentTable *table);
 void appendSegment(AssemblingSegmentTable *table, AssemblingSegment segment);
 int find_segment(const AssemblingSegmentTable *table, AssemblingSegment **seg, const char *name);
+int get_segment_index(const AssemblingSegmentTable *table, AssemblingSegment *segment);
 void freeSegmentTable(const AssemblingSegmentTable *table);
 
 #endif //SEGMENTS_H
