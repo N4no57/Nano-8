@@ -105,7 +105,10 @@ ParsedOperand get_reg_pair(const TokenList *tokens, SymbolTable *symbol_table, i
 }
 
 // parses tokens until it reaches a "," then returns the parsed operand
-ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok) {
+// reloc table is optional
+ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok,
+    struct RelocationTable *reloc_table, const AssemblingSegmentTable *segTable,
+    AssemblingSegment current_seg, const Token mnemonic) {
     ParsedOperand operand = {0, {{0}}};
 
     while (current_tok->type != TOKEN_EOF && current_tok->type != TOKEN_MNEMONIC &&
@@ -113,6 +116,16 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
         // go through and find out what argument this is and if it is part of a bigger piece or a standalone
         // e.g. R0 -> enum REGISTER, #1023 -> enum IMMEDIATE and so on
         switch (current_tok->type) {
+            case TOKEN_LABEL:
+                const uint8_t type = strcmp(mnemonic.str_val, "call") == 0;
+                if (reloc_table) relocationTableAppend(reloc_table, current_tok->str_val,
+                    get_segment_index(segTable, &current_seg), current_seg.size, type);
+                consume_token(tok_idx, current_tok, tokens);
+                operand.kind = type+3;
+                // placeholder value. serves as both flag that relocationEntry has been appended to relocation table and for the object file
+                operand.imm = 0x7FFFFFFF;
+                return operand;
+
             // most verbose case. needs careful handling.
             case TOKEN_SYMBOL:
                 if (current_tok->str_val[0] == '(') { // indirect reg/mem
