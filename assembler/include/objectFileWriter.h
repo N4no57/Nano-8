@@ -7,6 +7,8 @@
 
 #define RELOC_ABSOLUTE 0
 #define RELOC_RELATIVE 1
+#define DEFINED_TRUE 1
+#define DEFINED_FALSE 0
 
 #include <stdint.h>
 #include "symbolTable.h"

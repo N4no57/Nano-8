@@ -9,8 +9,6 @@
 #include <stdio.h>
 
 #define VERSION "1.0.0"
-#define DEFINED_TRUE 1
-#define DEFINED_FALSE 0
 
 #define SEGMENT_SIZE 32
 #define HEADER_SIZE 16 // + (SEGMENT_SIZE * numSegments)
