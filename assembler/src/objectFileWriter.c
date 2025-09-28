@@ -73,6 +73,8 @@ void freeObjectFile(const struct ObjectFile *obj) {
 void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
     char padding[16] = {0};
 
+    remove(fileName);
+
     FILE *f = fopen(fileName, "wb");
     if (!f) {
         perror("Failed to open file");
@@ -100,13 +102,13 @@ void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
     if (pad < 1) pad += 16;
     if (HAVE_PADDING) fwrite(padding, pad, 1, f);
 
-    if (HAVE_PADDING) fwrite(&obj->symbolTable.numSymbols, sizeof(obj->symbolTable.numSymbols), 1, f);
+    fwrite(&obj->symbolTable.numSymbols, sizeof(obj->symbolTable.numSymbols), 1, f);
     for (int i = 0; i < obj->symbolTable.numSymbols; i++) {
         fwrite(obj->symbolTable.symbols[i].name, sizeof(obj->symbolTable.symbols[i].name), 1, f);
         fwrite(&obj->symbolTable.symbols[i].segment_index, sizeof(obj->symbolTable.symbols[i].segment_index), 1, f);
         fwrite(&obj->symbolTable.symbols[i].segment_offset, sizeof(obj->symbolTable.symbols[i].segment_offset), 1, f);
         fwrite(&obj->symbolTable.symbols[i].defined, sizeof(obj->symbolTable.symbols[i].defined), 1, f);
-        fwrite(padding, 11, 1, f);
+        if (HAVE_PADDING) fwrite(padding, 11, 1, f);
     }
 
     fwrite(&obj->relocationTable.numRelocations, sizeof(obj->relocationTable.numRelocations), 1, f);
