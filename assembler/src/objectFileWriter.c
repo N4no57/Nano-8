@@ -148,8 +148,8 @@ void dumpObjectFile(const struct ObjectFile *obj) {
     printf("Relocations (%u):\n", obj->relocationTable.numRelocations);
     for (int i = 0; i < obj->relocationTable.numRelocations; i++) {
         struct RelocationEntry *rel = &obj->relocationTable.relocations[i];
-        printf("  Relocation %d: offset=0x%04X, symbol='%s', type=%u\n",
-               i, rel->segment_offset, rel->name, rel->type);
+        printf("  Relocation %d: segment=%u offset=0x%04X, symbol='%s', type=%u\n",
+               i, rel->segment_index, rel->segment_offset, rel->name, rel->type);
     }
 
     printf("==========================\n");
