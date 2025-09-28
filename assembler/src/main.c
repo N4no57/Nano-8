@@ -68,6 +68,19 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 			exit(1);
 		}
 
+		if (current_token.type == TOKEN_DIRECTIVE) {
+			if (strcmp(current_token.str_val, ".db") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
+				consume_token(&tok_idx, &current_token, tokens);
+				current_address++;
+				continue;
+			} else {
+				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
+				exit(1);
+			}
+		}
+
 		if (current_token.type == TOKEN_MNEMONIC) {
 			const InstructionDef *inst = find_instruction(instruction_table, table_size, current_token.str_val);
 			consume_token(&tok_idx, &current_token, tokens);
@@ -75,7 +88,7 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 			ParsedOperand operands[32];
 			int operand_count = 0;
 
-			while (current_token.type != TOKEN_MNEMONIC && current_token.type != TOKEN_EOF) {
+			while (operand_count < inst->operand_count) {
 				operands[operand_count++] = operand_parser(tokens, symbol_table, &tok_idx, &current_token);
 				if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ',') consume_token(&tok_idx, &current_token, tokens);
 				if (current_token.type == TOKEN_EOF) break;
@@ -98,7 +111,6 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, uint16_t *nu
 }
 
 uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t *num_bytes) {
-	uint16_t current_address = 0;
 	int tok_idx = 0;
 
 	uint16_t binary_index = 0;
@@ -122,6 +134,19 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 			exit(1);
 		}
 
+		if (current_token.type == TOKEN_DIRECTIVE) {
+			if (strcmp(current_token.str_val, ".db") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
+				binary[binary_index++] = current_token.int_value;
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			} else {
+				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
+				exit(1);
+			}
+		}
+
 		if (current_token.type == TOKEN_MNEMONIC) {
 			const InstructionDef *inst = find_instruction(instruction_table, table_size, current_token.str_val);
 			consume_token(&tok_idx, &current_token, tokens);
@@ -129,7 +154,7 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 			ParsedOperand operands[32];
 			int operand_count = 0;
 
-			while (current_token.type != TOKEN_MNEMONIC && current_token.type != TOKEN_EOF) {
+			while (operand_count < inst->operand_count) {
 				operands[operand_count++] = operand_parser(tokens, table, &tok_idx, &current_token);
 				if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ',') consume_token(&tok_idx, &current_token, tokens);
 				if (current_token.type == TOKEN_EOF) break;
@@ -139,7 +164,6 @@ uint8_t *second_pass(const TokenList *tokens, SymbolTable *table, const uint16_t
 				}
 			}
 
-			current_address += inst->get_size(operand_count, inst->operand_count, operands);
 			inst->encode(inst->base_opcode, operand_count, binary, &binary_index, operands);
 
 			continue;
@@ -181,6 +205,9 @@ int main() {
 		free_table(&symbol_table);
 		return 1;
 	}
+
+	AssemblingSegmentTable segmentTable;
+	initSegmentTable(&segmentTable);
 
 	FILE *input = fopen("test.asm", "r");
 	if (!input) {
@@ -229,6 +256,7 @@ int main() {
 
 	// free everything
 	freeTokenList(&tokens);
+	freeSegmentTable(&segmentTable);
 	free(binary);
 	free_table(&symbol_table);
 
