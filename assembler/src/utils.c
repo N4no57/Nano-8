@@ -122,7 +122,23 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                     add_symbol(symbol_table, &current_seg, current_tok->str_val, current_seg.size);
                     symbol_table->data[symbol_table->count-1].defined = DEFINED_FALSE;
                 }
-                const uint8_t type = strcmp(mnemonic.str_val, "call") == 0 || strcmp(mnemonic.str_val, "jmp") == 0;
+                uint8_t type = RELOC_ABSOLUTE;
+                if (strcmp(mnemonic.str_val, "call") == 0 || strcmp(mnemonic.str_val, "jmp") == 0) {
+                    Symbol tmp;
+                    find_symbol(symbol_table, current_tok->str_val, &tmp);
+                    int32_t offset = (int32_t)(tmp.offset - (current_seg.size+1));
+                    const uint32_t current_seg_idx = get_segment_index(segTable, &current_seg);
+                    const uint32_t symbol_seg_idx = get_segment_index(segTable, tmp.segment);
+                    if (current_seg_idx == symbol_seg_idx) {
+                        if (offset < -128 || offset > 127) {
+                            type = RELOC_ABSOLUTE;
+                        } else {
+                            type = RELOC_RELATIVE;
+                        }
+                    } else {
+                        type = RELOC_RELAX;
+                    }
+                }
                 if (reloc_table) relocationTableAppend(reloc_table, current_tok->str_val,
                     get_segment_index(segTable, &current_seg), current_seg.size, type);
                 consume_token(tok_idx, current_tok, tokens);
