@@ -13,6 +13,7 @@
 
 char *mnemonics[] = {
     "mov",
+    "jmp",
     "add",
     "hlt",
     "nop"

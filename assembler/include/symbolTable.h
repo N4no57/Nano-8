@@ -23,7 +23,7 @@ typedef struct {
 
 void init_table(SymbolTable *table);
 void add_symbol(SymbolTable *table, AssemblingSegment *seg, const char *label, uint16_t offset);
-int find_symbol(const SymbolTable *table, const char *label, const Symbol *result);
+int find_symbol(const SymbolTable *table, const char *label, Symbol *result);
 void free_table(const SymbolTable *table);
 
 #endif //SYMBOLTABLE_H

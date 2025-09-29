@@ -22,6 +22,7 @@
 
 InstructionDef instruction_table[] = {
 	{ "mov", 0x00, 2, encode_mov, get_size_mov },
+	{ "jmp", 0x02, 1, encode_jmp, get_size_jmp },
 	{ "hlt", 0x03, 0, encode_hlt, get_size_hlt },
 	{ "nop", 0x13, 0, encode_nop, get_size_nop }
 };
