@@ -1,4 +1,5 @@
 #include "../include/objectFileReader.h"
+#include "../include/linker.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -34,6 +35,8 @@ int main(int argc, char **argv) {
 
     const struct ObjectFile obj = readObjectFile("test.o");
     dumpObjectFile(&obj);
+
+    linker(&obj, 1, output);
 
     return 0;
 }
