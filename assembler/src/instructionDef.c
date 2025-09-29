@@ -128,7 +128,6 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
         seg->data[seg->size++] = operands[0].mem_pair.offset & 0xFF;
         seg->data[seg->size++] = operands[0].mem_pair.offset >> 8 & 0xFF;
         seg->data[seg->size++] = operands[1].reg << 4;
-        return;
     }
 }
 
