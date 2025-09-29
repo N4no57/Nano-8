@@ -1,5 +1,5 @@
+#include "../include/objectFileReader.h"
 #include <stdio.h>
-#include <stdbool.h>
 #include <unistd.h>
 #include <getopt.h>
 
@@ -31,6 +31,9 @@ int main(int argc, char **argv) {
                 break;
         }
     }
+
+    const struct ObjectFile obj = readObjectFile("test.o");
+    dumpObjectFile(&obj);
 
     return 0;
 }
