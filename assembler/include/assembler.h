@@ -5,6 +5,12 @@
 #ifndef ASSEMBLER_H
 #define ASSEMBLER_H
 
-int assemble();
+#include <stdbool.h>
+
+// assembler flags
+extern bool objDump;
+
+// assembler
+int assemble(const char *input, const char *output);
 
 #endif //ASSEMBLER_H

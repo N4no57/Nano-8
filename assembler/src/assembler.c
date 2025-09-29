@@ -19,6 +19,11 @@
 #define MAX_LINE_LENGTH 1024
 #define LINE_NUM_BASE_SIZE 16
 
+// flags
+bool objDump = 0;
+
+// assembler code
+
 InstructionDef instruction_table[] = {
 	{ "mov", 0x00, 2, encode_mov, get_size_mov },
 	{ "hlt", 0x03, 0, encode_hlt, get_size_hlt },
@@ -221,7 +226,7 @@ void free_lines(char **lines, const int num_lines) {
 	free(lines);
 }
 
-int assemble() {
+int assemble(const char *input, const char *output) {
 	int retval = 0;
 
 	SymbolTable symbol_table;
@@ -260,8 +265,8 @@ int assemble() {
 		goto segment_free;
 	}
 
-	FILE *input = fopen("test.asm", "r");
-	if (!input) {
+	FILE *in = fopen(input, "r");
+	if (!in) {
 		printf("Error opening input file\n");
 		retval = 1;
 		goto segment_free;
@@ -269,7 +274,7 @@ int assemble() {
 
 	int num_lines = 0;
 	char buffer[MAX_LINE_LENGTH];
-	while (fgets(buffer, MAX_LINE_LENGTH, input)) {
+	while (fgets(buffer, MAX_LINE_LENGTH, in)) {
 		if (num_lines >= line_capacity - 1) {
 			char **tmp = realloc(lines, line_capacity * 2 * sizeof(char *));
 			if (!tmp) {
@@ -285,7 +290,7 @@ int assemble() {
 	}
 	lines[num_lines] = NULL;
 
-	fclose(input);
+	fclose(in);
 
 	const TokenList tokens = tokenise(lines);
 
@@ -294,8 +299,8 @@ int assemble() {
 	second_pass(&tokens, &symbol_table, &segmentTable, &relocationTable);
 
 	struct ObjectFile obj = generateFileStruct(&symbol_table, &segmentTable, &relocationTable);
-	dumpObjectFile(&obj);
-	writeObjectFile(&obj, "out.o");
+	if (objDump) dumpObjectFile(&obj);
+	writeObjectFile(&obj, output);
 
 	// free everything
 	free_obj:
