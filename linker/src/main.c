@@ -5,11 +5,13 @@
 #include <getopt.h>
 
 #define DEFAULT_FILENAME "o.bin"
+#define LINKER_VERSION "1.0.0"
 
 int main(int argc, char **argv) {
     char *output = DEFAULT_FILENAME;
 
     static struct option long_options[] = {
+        {"version", no_argument, 0, 'v'},
         {NULL, 0, 0, 0}
     };
 
@@ -22,13 +24,22 @@ int main(int argc, char **argv) {
             case 'h':
                 printf("Usage: nano8-ld [options]\n");
                 printf("Options:\n");
+				printf("  --version          Display current version\n");
                 printf("  -h                 Display this help screen\n");
 				printf("  -o <file>          Place the output into <file>\n");
                 return 0;
             case 'o':
                 output = optarg;
                 break;
+            case 0:
+                if (strcmp(long_options[option_index].name, "version") == 0) {
+					printf("nano8-as.exe (built by Bernardo Oliveira) %s\n", LINKER_VERSION);
+                } else {
+                    printf("nano8-as: error: unrecognised command-line option '%s'\n", argv[optind-1]);
+                    break;
+                }
             default:
+                printf("nano8-as: error: unrecognised command-line option '-%c'\n", option);
                 break;
         }
     }
