@@ -3,6 +3,7 @@
 //
 
 #include "../include/objectFileWriter.h"
+#include "../include/flags.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -71,6 +72,7 @@ void freeObjectFile(const struct ObjectFile *obj) {
 }
 
 void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
+    if (verbose) printf("Writing object file: %s\n", fileName);
     char padding[16] = {0};
 
     remove(fileName);

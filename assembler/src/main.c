@@ -1,10 +1,16 @@
 #include "../include/assembler.h"
+#include "../include/flags.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <getopt.h>
 
 #define OUTPUT_DEFAULT "a.o"
+#define ASSEMBLER_VERSION "1.0.0"
+
+// flags
+bool objDump = 0;
+bool verbose = 0;
 
 const char *changeFileExt(char *string) {
 	for (int i = 0; i < strlen(string); i++) {
@@ -31,6 +37,7 @@ int main(const int argc, char **argv) {
 
 	static struct option long_options[] = {
 		{"objdump", no_argument, 0, 0},
+		{"version", no_argument, 0, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -38,11 +45,12 @@ int main(const int argc, char **argv) {
 
 	int option;
 	int option_index = 0;
-	while ((option = getopt_long(argc, argv, "ho:", long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "ho:v", long_options, &option_index)) != -1) {
 		switch (option) {
 			case 'h':
 				printf("Usage: nano8-as [options] file...\n");
 				printf("Options:\n");
+				printf("  --version          Display current version\n");
 				printf("  -h                 Display this help screen\n");
 				printf("  -o <file>          Place the output into <file>\n");
 				printf("  --objdump          Prints the object file to stdout\n");
@@ -50,9 +58,15 @@ int main(const int argc, char **argv) {
 			case 'o':
 				output = optarg;
 				break;
+			case 'v':
+				verbose = true;
+				break;
 			case 0:
-				if (strcmp(long_options[option].name, "objdump") == 0) {
+				if (strcmp(long_options[option_index].name, "objdump") == 0) {
 					objDump = true;
+				} else if (strcmp(long_options[option_index].name, "version") == 0) {
+					printf("nano8-as.exe (built by Bernardo Oliveira) %s\n", ASSEMBLER_VERSION);
+					return 0;
 				}
 				break;
 			case '?':
@@ -97,9 +111,11 @@ int main(const int argc, char **argv) {
 
 	if (argc - optind > 1) {
 		for (int i = 0; i < argc - optind; i++) {
+			if (verbose) printf("Assembling file: %s\n", input[i]);
 			assemble(input[i], changeFileExt(input[i]));
 		}
 		return 0;
 	}
+	if (verbose) printf("Assembling file: %s\n", input[0]);
 	return assemble(input[0], output);
 }

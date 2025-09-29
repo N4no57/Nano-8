@@ -8,6 +8,7 @@
 #include "../include/tokeniser.h"
 #include "../include/utils.h"
 #include "../include/objectFileWriter.h"
+#include "../include/flags.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -18,9 +19,6 @@
 #define SYMBOL_TABLE_BASE_SIZE 16
 #define MAX_LINE_LENGTH 1024
 #define LINE_NUM_BASE_SIZE 16
-
-// flags
-bool objDump = 0;
 
 // assembler code
 
