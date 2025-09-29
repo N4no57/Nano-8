@@ -30,6 +30,7 @@ InstructionDef instruction_table[] = {
 int table_size = sizeof(instruction_table) / sizeof(InstructionDef);
 
 void first_pass(const TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentTable *segment_table) {
+	if (verbose) printf("First pass: Collecting Symbols\n");
 	int tok_idx = 0;
 	Token current_token;
 	consume_token(&tok_idx, &current_token, tokens);
@@ -45,6 +46,7 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, AssemblingSe
 			consume_token(&tok_idx, &current_token, tokens);
 			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ':') {
 				add_symbol(symbol_table, current_segment, label, current_segment->size);
+				if (verbose) printf("Defining symbol: %s = 0x%02x\n", label, (uint32_t)current_segment->size);
 				consume_token(&tok_idx, &current_token, tokens);
 				continue;
 			}
@@ -120,18 +122,28 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, AssemblingSe
 	for (int i = 0; i < segment_table->count; i++) {
 		segment_table->segments[i].size = 0;
 	}
-
 }
 
 void correct_reloc_offset(const struct RelocationTable *reloc_table, const int operand_num) {
+	int reloc_index = reloc_table->numRelocations-1;
 	if (operand_num == 2) {
-		reloc_table->relocations[reloc_table->numRelocations-1].segment_offset += 2;
+		reloc_table->relocations[reloc_index].segment_offset += 2;
 	} else if (operand_num == 1) {
-		reloc_table->relocations[reloc_table->numRelocations-1].segment_offset += 1;
+		reloc_table->relocations[reloc_index].segment_offset += 1;
+	}
+	if (verbose) {
+		char type[10];
+		if (reloc_table->relocations[reloc_index].type == RELOC_ABSOLUTE) strcpy(type, "ABSOLUTE");
+		else strcpy(type, "RELATIVE");
+		printf("Relocation: symbol %s at offset %02x type=%s\n",
+		reloc_table->relocations[reloc_index].name,
+		reloc_table->relocations[reloc_index].segment_offset,
+		type);
 	}
 }
 
 void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSegmentTable *segment_table, struct RelocationTable *reloc_table) {
+	if (verbose) printf("Pass 2: Encoding instructions\n");
 	int tok_idx = 0;
 
 	AssemblingSegment *current_segment = 0;
