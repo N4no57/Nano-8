@@ -219,6 +219,7 @@ void correct_reloc_offset(const struct RelocationTable *reloc_table, const int o
 	if (verbose) {
 		char type[10];
 		if (reloc_table->relocations[reloc_index].type == RELOC_ABSOLUTE) strcpy(type, "ABSOLUTE");
+		else if (reloc_table->relocations[reloc_index].type == RELOC_RELAX) strcpy(type, "RELAXED");
 		else strcpy(type, "RELATIVE");
 		printf("Relocation: symbol %s at offset %02x type=%s\n",
 		reloc_table->relocations[reloc_index].name,
