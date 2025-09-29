@@ -1,6 +1,5 @@
 //
 // Created by Bernardo on 29/09/2025.
-//
 
 #include "../include/assembler.h"
 #include "../include/instructionDef.h"
@@ -20,8 +19,6 @@
 #define SYMBOL_TABLE_BASE_SIZE 16
 #define MAX_LINE_LENGTH 1024
 #define LINE_NUM_BASE_SIZE 16
-
-// assembler code
 
 InstructionDef instruction_table[] = {
 	{ "mov", 0x00, 2, encode_mov, get_size_mov },
@@ -63,7 +60,7 @@ void get_lines(char ***lines, const char *filename, int *num_lines, int *line_ca
 	fclose(in);
 }
 
-void includeFile(const char *fileName, TokenList *tokenList, const size_t pos) {
+void includeFile(const char *fileName, TokenList *tokenList, const int pos) {
 	int line_capacity = LINE_NUM_BASE_SIZE;
 	int num_lines = 0;
 	char **lines = malloc(line_capacity * sizeof(char *));
@@ -83,23 +80,25 @@ void includeFile(const char *fileName, TokenList *tokenList, const size_t pos) {
 
 	const TokenList newTokens = tokenise(lines);
 
-	Token *tmp = realloc(tokenList->data, (tokenList->capacity + newTokens.capacity) * sizeof(Token));
-	if (!tmp) {
-		perror("Memory allocation error");
-		exit(1);
+	size_t needed = tokenList->count + newTokens.count - 1;
+	if (needed > tokenList->capacity) {
+		Token *tmp = realloc(tokenList->data, needed * sizeof(Token));
+		if (!tmp) {
+			perror("Memory allocation error");
+			exit(1);
+		}
+		tokenList->data = tmp;
+		tokenList->capacity = needed;
 	}
-	tokenList->data = tmp;
 
 	// move tail upwards to make room
-	memmove(tokenList->data + pos + newTokens.count, tokenList->data + pos, (tokenList->capacity - pos) * sizeof(Token));
+	memmove(tokenList->data + pos + newTokens.count-1,
+		tokenList->data + pos, (tokenList->count - pos) * sizeof(Token));
 
 	// splice in new data
-	memcpy(tokenList->data + pos, newTokens.data, newTokens.count * sizeof(Token));
+	memcpy(tokenList->data + pos, newTokens.data, (newTokens.count-1) * sizeof(Token));
 
-	tokenList->capacity += newTokens.capacity;
-	tokenList->count += newTokens.count;
-
-	freeTokenList(&newTokens);
+	tokenList->count += newTokens.count-1;
 }
 
 void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentTable *segment_table) {
@@ -162,12 +161,13 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 				current_segment = &segment_table->segments[segment_table->count-1];
 				continue;
 			} else if (strcmp(current_token.str_val, ".include") == 0) {
-				consume_token(&tok_idx, &current_token, tokens);
+				consume_token(&tok_idx, &current_token, tokens); // move past .include directive
 				if (current_token.type != TOKEN_LABEL) {
 					fprintf(stderr, "Unexpected token '%s'\n", current_token.str_val);
 					exit(1);
 				}
 				includeFile(current_token.str_val, tokens, tok_idx);
+				consume_token(&tok_idx, &current_token, tokens); // eat the filename token
 				continue;
 			} else {
 				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
@@ -278,6 +278,10 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 				}
 				fprintf(stderr, "segmentation fault");
 				exit(1);
+			} else if (strcmp(current_token.str_val, ".include") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
 			} else {
 				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
 				exit(1);
