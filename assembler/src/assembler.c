@@ -162,6 +162,11 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 				current_segment = &segment_table->segments[segment_table->count-1];
 				continue;
 			} else if (strcmp(current_token.str_val, ".include") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (current_token.type != TOKEN_LABEL) {
+					fprintf(stderr, "Unexpected token '%s'\n", current_token.str_val);
+					exit(1);
+				}
 				includeFile(current_token.str_val, tokens, tok_idx);
 				continue;
 			} else {
