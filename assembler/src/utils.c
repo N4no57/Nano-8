@@ -109,7 +109,7 @@ ParsedOperand get_reg_pair(const TokenList *tokens, SymbolTable *symbol_table, i
 ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok,
     struct RelocationTable *reloc_table, const AssemblingSegmentTable *segTable,
     AssemblingSegment current_seg, const Token mnemonic) {
-    ParsedOperand operand = {0, {{0}}};
+    ParsedOperand operand = {0, {0}};
 
     while (current_tok->type != TOKEN_EOF && current_tok->type != TOKEN_MNEMONIC &&
         !(current_tok->type == TOKEN_SYMBOL && current_tok->str_val[0] == ',')) {
