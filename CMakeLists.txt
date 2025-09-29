@@ -3,3 +3,4 @@ project(nano_8 C)
 
 add_subdirectory(emulator)
 add_subdirectory(assembler)
+add_subdirectory(linker)
