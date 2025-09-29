@@ -30,6 +30,7 @@ struct ObjectFile readObjectFile(const char *filename) {
 
     fread(obj.header.version, sizeof(obj.header.version), 1, f);
     fread(&obj.header.segmentTable.numSegments, sizeof(obj.header.segmentTable.numSegments), 1, f);
+    if (HAVE_PADDING) fseek(f, 4, SEEK_CUR);
 
     int data_size = 0;
 
@@ -42,8 +43,8 @@ struct ObjectFile readObjectFile(const char *filename) {
         if (HAVE_PADDING) fseek(f, 10, SEEK_CUR);
     }
 
-    obj.Data = malloc(data_size * (sizeof(obj.Data)));
-    fread(obj.Data, sizeof(obj.Data), data_size, f);
+    obj.Data = malloc(data_size * (sizeof(uint8_t)));
+    fread(obj.Data, sizeof(uint8_t), data_size, f);
 
     int pad = (16 - (data_size % 16) - 2) % 16;
     if (pad < 1) pad += 16;
