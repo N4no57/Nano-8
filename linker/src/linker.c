@@ -102,32 +102,6 @@ void append_segmentMapEntry(const struct SegmentMapEntry entry, const uint32_t o
     segmentMap[obj_idx][local_segment_idx] = entry;
 }
 
-// TODO make linker:
-// for each object file:
-//     read object file into memory
-//
-// for each object file in memory:
-//     for each segment:
-//         if segment name exists in final segment table:
-//             append segment data
-//             update base_address
-//         else:
-//             create new segment in final segment table
-//
-// for each object file in memory:
-//     for each symbol:
-//         if defined:
-//             absolute address = segment_base + segment_offset
-//             add to global symbol table
-//         else:
-//             mark as undefined
-//
-// for each object file in memory:
-//     for each relocation entry:
-//         symbol_address = lookup_global_symbol(entry.name)
-//         target_address = segment_base + entry.segment_offset
-//         write symbol_address into final segment data at target_address
-
 void linker(const struct ObjectFile *objs, const size_t num_files, char *out) {
     linkedSegments = malloc(sizeof(struct LinkedSegment) * segment_table_capacity);
     if (!linkedSegments) {
