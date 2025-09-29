@@ -109,13 +109,25 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
         seg->data[seg->size++] = operands[1].mem_pair.offset >> 8 & 0xFF;
         return;
     }
-    if (operands[0].kind == ABSOLUTE && operands[1].kind == REGISTER) { // TODO
+    if (operands[0].kind == ABSOLUTE && operands[1].kind == REGISTER) {
+        seg->data[seg->size++] = base_opcode + 0b00010100;
+        seg->data[seg->size++] = operands[0].imm & 0xFF;
+        seg->data[seg->size++] = operands[0].imm >> 8 & 0xFF;
+        seg->data[seg->size++] = operands[1].reg << 4;
         return;
     }
-    if (operands[0].kind == INDIRECT_REG && operands[1].kind == REGISTER) { // TODO
+    if (operands[0].kind == INDIRECT_REG && operands[1].kind == REGISTER) {
+        seg->data[seg->size++] = base_opcode + 0b00011000;
+        seg->data[seg->size++] = operands[0].mem_pair.reg_high << 4 | operands[0].mem_pair.reg_low;
+        seg->data[seg->size++] = operands[1].reg << 4;
         return;
     }
-    if (operands[0].kind == INDEXED_MEM && operands[1].kind == REGISTER) { // TODO
+    if (operands[0].kind == INDEXED_MEM && operands[1].kind == REGISTER) {
+        seg->data[seg->size++] = base_opcode + 0b00011100;
+        seg->data[seg->size++] = operands[0].mem_pair.reg_high << 4 | operands[0].mem_pair.reg_low;
+        seg->data[seg->size++] = operands[0].mem_pair.offset & 0xFF;
+        seg->data[seg->size++] = operands[0].mem_pair.offset >> 8 & 0xFF;
+        seg->data[seg->size++] = operands[1].reg << 4;
         return;
     }
 }
