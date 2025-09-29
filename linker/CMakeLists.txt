@@ -3,4 +3,6 @@ project(linker C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(nano8-ld src/main.c)
+add_executable(nano8-ld src/main.c
+        src/objectFileReader.c include/objectFileReader.h
+)
