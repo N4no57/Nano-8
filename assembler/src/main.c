@@ -45,6 +45,7 @@ int main(const int argc, char **argv) {
 				printf("Options:\n");
 				printf("  -h                 Display this help screen\n");
 				printf("  -o <file>          Place the output into <file>\n");
+				printf("  --objdump          Prints the object file to stdout\n");
 				return 0;
 			case 'o':
 				output = optarg;
@@ -58,6 +59,7 @@ int main(const int argc, char **argv) {
 				printf("nano8-as: error: unrecognised command-line option '%s'\n", argv[optind-1]);
 				break;
 			default:
+				printf("nano8-as: error: unrecognised command-line option '-%c'\n", option);
 				break;
 		}
 	}
