@@ -13,10 +13,39 @@
 
 char *mnemonics[] = {
     "mov",
-    "jmp",
+    "push",
+    "pop",
+    "inb",
+    "outb",
     "add",
+    "sub",
+    "inc",
+    "dec",
+    "mul",
+    "div",
+    "and",
+    "or",
+    "xor",
+    "not",
+    "shl",
+    "shr",
+    "jmp",
+    "jz",
+    "jnz",
+    "jc",
+    "jnc",
+    "jo",
+    "jno",
+    "jn",
+    "jnn",
+    "call",
+    "ret",
     "hlt",
-    "nop"
+    "nop",
+    "cli",
+    "sti",
+    "int",
+    "iret"
 };
 
 char *registers[] = {
