@@ -57,5 +57,6 @@ struct ObjectFile {
 };
 
 struct ObjectFile readObjectFile(const char *filename);
+void dumpObjectFile(const struct ObjectFile *obj);
 
 #endif //OBJ_H
