@@ -122,7 +122,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                     add_symbol(symbol_table, &current_seg, current_tok->str_val, current_seg.size);
                     symbol_table->data[symbol_table->count-1].defined = DEFINED_FALSE;
                 }
-                const uint8_t type = strcmp(mnemonic.str_val, "call") == 0;
+                const uint8_t type = strcmp(mnemonic.str_val, "call") == 0 || strcmp(mnemonic.str_val, "jmp") == 0;
                 if (reloc_table) relocationTableAppend(reloc_table, current_tok->str_val,
                     get_segment_index(segTable, &current_seg), current_seg.size, type);
                 consume_token(tok_idx, current_tok, tokens);
