@@ -11,6 +11,7 @@
 #include "../include/flags.h"
 
 #include <ctype.h>
+#include <io.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,6 +71,13 @@ void includeFile(const char *fileName, TokenList *tokenList, const size_t pos) {
 		printf("Memory allocation error\n");
 		exit(1);
 	}
+
+	FILE *ftmp = fopen(fileName, "r");
+	if (ftmp == NULL) {
+		printf("File not found: %s\n", fileName);
+		exit(1);
+	}
+	fclose(ftmp);
 
 	get_lines(&lines, fileName, &num_lines, &line_capacity);
 
