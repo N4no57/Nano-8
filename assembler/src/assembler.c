@@ -29,7 +29,72 @@ InstructionDef instruction_table[] = {
 };
 int table_size = sizeof(instruction_table) / sizeof(InstructionDef);
 
-void first_pass(const TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentTable *segment_table) {
+void free_lines(char **lines, const int num_lines) {
+	for (int i = 0; i < num_lines; i++) {
+		free(lines[i]);
+	}
+	free(lines);
+}
+
+void get_lines(char ***lines, const char *filename, int *num_lines, int *line_capacity) {
+	FILE *in = fopen(filename, "r");
+	if (!in) {
+		printf("Error opening input file\n");
+		exit(1);
+	}
+
+	char buffer[MAX_LINE_LENGTH];
+	while (fgets(buffer, MAX_LINE_LENGTH, in)) {
+		if (*num_lines >= *line_capacity - 1) {
+			char **tmp = realloc(lines, *line_capacity * 2 * sizeof(char *));
+			if (!tmp) {
+				printf("Memory allocation error\n");
+				free_lines(*lines, *num_lines);
+				exit(1);
+			}
+			*lines = tmp;
+			*line_capacity *= 2;
+		}
+		(*lines)[(*num_lines)++] = strdup(buffer);
+	}
+	(*lines)[*num_lines] = NULL;
+
+	fclose(in);
+}
+
+void includeFile(const char *fileName, TokenList *tokenList, const size_t pos) {
+	int line_capacity = LINE_NUM_BASE_SIZE;
+	int num_lines = 0;
+	char **lines = malloc(line_capacity * sizeof(char *));
+	if (!lines) {
+		printf("Memory allocation error\n");
+		exit(1);
+	}
+
+	get_lines(&lines, fileName, &num_lines, &line_capacity);
+
+	const TokenList newTokens = tokenise(lines);
+
+	Token *tmp = realloc(tokenList->data, (tokenList->capacity + newTokens.capacity) * sizeof(Token));
+	if (!tmp) {
+		perror("Memory allocation error");
+		exit(1);
+	}
+	tokenList->data = tmp;
+
+	// move tail upwards to make room
+	memmove(tokenList->data + pos + newTokens.count, tokenList->data + pos, (tokenList->capacity - pos) * sizeof(Token));
+
+	// splice in new data
+	memcpy(tokenList->data + pos, newTokens.data, newTokens.count * sizeof(Token));
+
+	tokenList->capacity += newTokens.capacity;
+	tokenList->count += newTokens.count;
+
+	freeTokenList(&newTokens);
+}
+
+void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentTable *segment_table) {
 	if (verbose) printf("First pass: Collecting Symbols\n");
 	int tok_idx = 0;
 	Token current_token;
@@ -64,6 +129,10 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, AssemblingSe
 			} else if (strcmp(current_token.str_val, ".segment") == 0) {
 				consume_token(&tok_idx, &current_token, tokens);
 				char segName[16];
+				if (current_token.type != TOKEN_LABEL) {
+					fprintf(stderr, "Unexpected token '%s'\n", current_token.str_val);
+					exit(1);
+				}
 				strcpy(segName, current_token.str_val);
 				consume_token(&tok_idx, &current_token, tokens);
 				AssemblingSegment *tmp = 0;
@@ -83,6 +152,9 @@ void first_pass(const TokenList *tokens, SymbolTable *symbol_table, AssemblingSe
 				}
 				appendSegment(segment_table, s);
 				current_segment = &segment_table->segments[segment_table->count-1];
+				continue;
+			} else if (strcmp(current_token.str_val, ".include") == 0) {
+				includeFile(current_token.str_val, tokens, tok_idx);
 				continue;
 			} else {
 				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
@@ -229,13 +301,6 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 	}
 }
 
-void free_lines(char **lines, const int num_lines) {
-	for (int i = 0; i < num_lines; i++) {
-		free(lines[i]);
-	}
-	free(lines);
-}
-
 int assemble(const char *input, const char *output) {
 	int retval = 0;
 
@@ -243,12 +308,15 @@ int assemble(const char *input, const char *output) {
 	init_table(&symbol_table);
 
 	int line_capacity = LINE_NUM_BASE_SIZE;
+	int num_lines = 0;
     char **lines = malloc(line_capacity * sizeof(char *));
 	if (!lines) {
 		printf("Memory allocation error\n");
 		retval = 1;
 		goto free_sTable;
 	}
+
+	get_lines(&lines, input, &num_lines, &line_capacity);
 
 	AssemblingSegmentTable segmentTable;
 	initSegmentTable(&segmentTable);
@@ -275,40 +343,13 @@ int assemble(const char *input, const char *output) {
 		goto segment_free;
 	}
 
-	FILE *in = fopen(input, "r");
-	if (!in) {
-		printf("Error opening input file\n");
-		retval = 1;
-		goto segment_free;
-	}
-
-	int num_lines = 0;
-	char buffer[MAX_LINE_LENGTH];
-	while (fgets(buffer, MAX_LINE_LENGTH, in)) {
-		if (num_lines >= line_capacity - 1) {
-			char **tmp = realloc(lines, line_capacity * 2 * sizeof(char *));
-			if (!tmp) {
-				printf("Memory allocation error\n");
-				free_lines(lines, num_lines);
-				free_table(&symbol_table);
-				return 1;
-			}
-			lines = tmp;
-			line_capacity *= 2;
-		}
-		lines[num_lines++] = strdup(buffer);
-	}
-	lines[num_lines] = NULL;
-
-	fclose(in);
-
-	const TokenList tokens = tokenise(lines);
+	TokenList tokens = tokenise(lines);
 
 	first_pass(&tokens, &symbol_table, &segmentTable);
 
 	second_pass(&tokens, &symbol_table, &segmentTable, &relocationTable);
 
-	struct ObjectFile obj = generateFileStruct(&symbol_table, &segmentTable, &relocationTable);
+	const struct ObjectFile obj = generateFileStruct(&symbol_table, &segmentTable, &relocationTable);
 	if (objDump) dumpObjectFile(&obj);
 	writeObjectFile(&obj, output);
 
