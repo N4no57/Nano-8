@@ -6,7 +6,7 @@
 #include <getopt.h>
 
 #define OUTPUT_DEFAULT "a.o"
-#define ASSEMBLER_VERSION "1.1.1"
+#define ASSEMBLER_VERSION "1.2.0"
 
 // flags
 bool objDump = 0;
