@@ -17,8 +17,17 @@ const char *changeFileExt(char *string) {
 	return string;
 }
 
+int hasExtension(const char *string) {
+	for (int i = 0; i < strlen(string); i++) {
+		if (string[i] == '.') {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int main(const int argc, char **argv) {
-	const char *output = OUTPUT_DEFAULT;
+	char *output = OUTPUT_DEFAULT;
 
 	static struct option long_options[] = {
 		{"objdump", no_argument, 0, 0},
@@ -37,6 +46,9 @@ int main(const int argc, char **argv) {
 				printf("  -h                 Display this help screen\n");
 				printf("  -o <file>          Place the output into <file>\n");
 				return 0;
+			case 'o':
+				output = optarg;
+				break;
 			case 0:
 				if (strcmp(long_options[option].name, "objdump") == 0) {
 					objDump = true;
@@ -47,6 +59,19 @@ int main(const int argc, char **argv) {
 				break;
 			default:
 				break;
+		}
+	}
+
+
+	const int length = (int)strlen(output);
+	char o[length+3];
+	if (output != OUTPUT_DEFAULT) {
+		if (!hasExtension(output)) {
+			strcpy(o, output);
+			o[length] = '.';
+			o[length+1] = 'o';
+			o[length+2] = 0;
+			output = o;
 		}
 	}
 
