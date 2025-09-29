@@ -117,9 +117,10 @@ void writeObjectFile(const struct ObjectFile *obj, const char *fileName) {
     if (HAVE_PADDING) fwrite(padding, 14, 1, f);
     for (int i = 0; i < obj->relocationTable.numRelocations; i++) {
         fwrite(obj->relocationTable.relocations[i].name, sizeof(obj->relocationTable.relocations[i].name), 1, f);
+        fwrite(&obj->relocationTable.relocations[i].segment_index, sizeof(obj->relocationTable.relocations[i].segment_index), 1, f);
         fwrite(&obj->relocationTable.relocations[i].segment_offset, sizeof(obj->relocationTable.relocations[i].segment_offset), 1, f);
         fwrite(&obj->relocationTable.relocations[i].type, sizeof(obj->relocationTable.relocations[i].type), 1, f);
-        if (HAVE_PADDING) fwrite(padding, 13, 1, f);
+        if (HAVE_PADDING) fwrite(padding, 11, 1, f);
     }
 
     fclose(f);
