@@ -310,67 +310,71 @@ void execute(CPU *cpu) {
                 break;
             case POP: // TODO
                 break;
-            case INB:
+            case INB: // TODO
                 break;
-            case OUTB:
+            case OUTB: // TODO
                 break;
             case ADD:
+                execute_complexArith(cpu, instruction, 0);
                 break;
             case SUB:
+                execute_complexArith(cpu, instruction, 1);
                 break;
-            case CMP:
+            case CMP: // TODO
                 break;
-            case INC:
+            case INC: // TODO
                 break;
-            case DEC:
+            case DEC: // TODO
                 break;
             case MUL:
+                execute_complexArith(cpu, instruction, 2);
                 break;
             case DIV:
+                execute_complexArith(cpu, instruction, 3);
                 break;
-            case AND:
+            case AND: // TODO
                 break;
-            case OR:
+            case OR: // TODO
                 break;
-            case XOR:
+            case XOR: // TODO
                 break;
-            case NOT:
+            case NOT: // TODO
                 break;
-            case SHL:
+            case SHL: // TODO
                 break;
-            case SHR:
+            case SHR: // TODO
                 break;
-            case JMP:
+            case JMP: // TODO
                 break;
-            case JZ:
+            case JZ: // TODO
                 break;
-            case JNZ:
+            case JNZ: // TODO
                 break;
-            case JC:
+            case JC: // TODO
                 break;
-            case JNC:
+            case JNC: // TODO
                 break;
-            case JO:
+            case JO: // TODO
                 break;
-            case JNO:
+            case JNO: // TODO
                 break;
-            case JN:
+            case JN: // TODO
                 break;
-            case JNN:
+            case JNN: // TODO
                 break;
-            case CALL:
+            case CALL: // TODO
                 break;
-            case RET:
+            case RET: // TODO
                 break;
             case HLT:
                 return;
             case NOP:
                 break;
-            case CLI:
+            case CLI: // TODO
                 break;
-            case STI:
+            case STI: // TODO
                 break;
-            case IRET:
+            case IRET: // TODO
                 break;
             default:
                 printf("Instruction not handled\nOpcode: %02x", instruction);

@@ -10,12 +10,11 @@ int main() {
   reset(&cpu);
 
   // inline program injection
-  cpu.memory.data[0x1000] = ADD_REG_REG;
-  cpu.memory.data[0x1001] = 0x01;
+  cpu.memory.data[0x1000] = 0x04;
+  cpu.memory.data[0x1001] = 0x00;
+  cpu.memory.data[0x1002] = 0x0A;
+  cpu.memory.data[0x1003] = 0x03;
   // end - inline program injection
-
-  cpu.R0 = 0x7F;
-  cpu.R1 = 0x01;
 
   execute(&cpu);
 
