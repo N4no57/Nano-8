@@ -189,17 +189,19 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out) {
 
     for (size_t i = 0; i < num_files; i++) {
         for (int j = 0; j < objs[i].relocationTable.numRelocations; j++) {
-            uint32_t target_seg = segmentMap[i][objs[i].relocationTable.relocations[j].segment_index].global_index;
-            uint32_t offset_adjust = segmentMap[i][objs[i].relocationTable.relocations[j].segment_index].offset_adjust;
-            uint32_t offset = objs[i].relocationTable.relocations[j].segment_offset;
-            uint32_t target_offset = offset_adjust + offset;
-            int symbol_idx = find_symbol(objs[i].relocationTable.relocations[j].name);
+            const int16_t addend = objs[i].relocationTable.relocations[j].addend;
+            const uint32_t target_seg = segmentMap[i][objs[i].relocationTable.relocations[j].segment_index].global_index;
+            const uint32_t offset_adjust = segmentMap[i][objs[i].relocationTable.relocations[j].segment_index].offset_adjust;
+            const uint32_t offset = objs[i].relocationTable.relocations[j].segment_offset;
+            const uint32_t target_offset = offset_adjust + offset;
+            const int symbol_idx = find_symbol(objs[i].relocationTable.relocations[j].name);
             if (symbol_idx == -1) {
                 printf("nano8-ld: fatal-error: symbol not found %s\n", objs[i].relocationTable.relocations[j].name);
                 exit(EXIT_FAILURE);
             }
-            linkedSegments[target_seg].data[target_offset] = symbolTable[symbol_idx].absolute_address & 0xFF;
-            linkedSegments[target_seg].data[target_offset+1] = symbolTable[symbol_idx].absolute_address >> 8 & 0xFF;
+            const uint32_t address = symbolTable[symbol_idx].absolute_address + addend;
+            linkedSegments[target_seg].data[target_offset] = address & 0xFF;
+            linkedSegments[target_seg].data[target_offset+1] = address >> 8 & 0xFF;
         }
     }
 

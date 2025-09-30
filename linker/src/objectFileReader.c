@@ -68,8 +68,9 @@ struct ObjectFile readObjectFile(const char *filename) {
         fread(obj.relocationTable.relocations[i].name, sizeof(obj.relocationTable.relocations[i].name), 1, f);
         fread(&obj.relocationTable.relocations[i].segment_index, sizeof(obj.relocationTable.relocations[i].segment_index), 1, f);
         fread(&obj.relocationTable.relocations[i].segment_offset, sizeof(obj.relocationTable.relocations[i].segment_offset), 1, f);
+        fread(&obj.relocationTable.relocations[i].addend, sizeof(obj.relocationTable.relocations[i].addend), 1, f);
         fread(&obj.relocationTable.relocations[i].type, sizeof(obj.relocationTable.relocations[i].type), 1, f);
-        if (HAVE_PADDING) fseek(f, 11, SEEK_CUR);
+        if (HAVE_PADDING) fseek(f, 9, SEEK_CUR);
     }
 
     fclose(f);
@@ -107,8 +108,8 @@ void dumpObjectFile(const struct ObjectFile *obj) {
     printf("Relocations (%u):\n", obj->relocationTable.numRelocations);
     for (int i = 0; i < obj->relocationTable.numRelocations; i++) {
         struct RelocationEntry *rel = &obj->relocationTable.relocations[i];
-        printf("  Relocation %d: segment=%u offset=0x%04X, symbol='%s', type=%u\n",
-               i, rel->segment_index, rel->segment_offset, rel->name, rel->type);
+        printf("  Relocation %d: segment=%u offset=0x%04X, addend=0x%04X symbol='%s', type=%u\n",
+               i, rel->segment_index, rel->segment_offset, rel->addend, rel->name, rel->type);
     }
 
     printf("==========================\n");
