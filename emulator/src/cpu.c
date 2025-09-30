@@ -150,6 +150,47 @@ void decode_indreg(CPU *cpu, uint16_t *values) {
     values[1] = (tmp >> 4) & 0x0F;      // idx reg high
 }
 
+void execute_mov(CPU *cpu, const uint8_t instruction) {
+    const uint8_t type = instruction & 0b00011100;
+    if (type == 0) { // mov reg, reg
+        uint16_t values[2]; // 0: dest, 1: src
+        decode_reg_reg(cpu, values);
+        set_reg(cpu, values[0], read_reg(cpu, values[1]));
+    } else if (type == 0b001 << 2) { // mov reg, #imm
+        uint16_t values[2]; // 0: dest, 1: src
+        decode_reg_imm(cpu, values);
+        set_reg(cpu, values[0], values[1]);
+    } else if (type == 0b010 << 2) { // mov reg, abs
+        uint16_t values[2];
+        decode_reg_abs(cpu, values);
+        set_reg(cpu, values[0], read_byte(&cpu->memory, values[1]));
+    } else if (type == 0b011 << 2) { // mov reg, (h(igh)Reg, l(ow)Reg)
+        uint16_t values[3]; // 0: dest, 1: low reg, 2: high reg
+        decode_reg_indreg(cpu, values);
+        set_reg(cpu, values[0],
+            read_byte(&cpu->memory, read_reg(cpu, values[1]) | read_reg(cpu, values[2]) << 8));
+    } else if (type == 0b100 << 2) { // mov reg, [(h(igh)Reg, l(ow)Reg)±offset]
+        uint16_t values[4]; // 0: dest, 1: low reg, 2: high reg, 3: offset
+        decode_reg_idx(cpu, values);
+        const uint16_t address = (read_reg(cpu, values[1]) | read_reg(cpu, values[2]) << 8) + (int16_t)values[3];
+        set_reg(cpu, address, read_byte(&cpu->memory, address));
+    } else if (type == 0b101 << 2) { // mov abs, reg
+        uint16_t values[2]; // 0: abs, 1: reg
+        decode_abs_reg(cpu, values);
+        write_byte(&cpu->memory, values[0], read_reg(cpu, values[1]));
+    } else if (type == 0b110 << 2) { // mov (h(igh)Reg, l(ow)Reg), reg
+        uint16_t values[3]; // 0: low reg, 1: high reg 2: reg
+        decode_indreg_reg(cpu, values);
+        write_byte(&cpu->memory,read_reg(cpu, values[0])
+                 + read_reg(cpu, values[1]), read_reg(cpu, values[2]));
+    } else if (type == 0b111 << 2) { // mov [(h(igh)Reg, l(ow)Reg)±offset], reg
+        uint16_t values[4]; // 0: low reg, 1: high reg, 2: offset, 3: dest
+        decode_idx_reg(cpu, values);
+        const uint16_t address = (read_reg(cpu, values[0]) | read_reg(cpu, values[1]) << 8) + (int16_t)values[2];
+        write_byte(&cpu->memory, address, read_reg(cpu, values[3]));
+    }
+}
+
 void CPU_init(CPU *cpu) {
     memory_init(&cpu->memory);
     memset(&cpu->ports, 0, sizeof(cpu->ports));
