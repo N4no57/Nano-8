@@ -1,13 +1,16 @@
 #include "../include/cpu.h"
+
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-uint8_t fetch_byte(const CPU *cpu, const uint16_t addr) {
-    return cpu->memory.data[addr];
+uint8_t fetch_byte(CPU *cpu) {
+    return read_byte(&cpu->memory, cpu->PC++);
 }
 
-void set_byte(CPU *cpu, const uint16_t addr, const uint8_t value) {
-    cpu->memory.data[addr] = value;
+uint16_t fetch_word(CPU *cpu) {
+    cpu->PC += 2;
+    return read_word(&cpu->memory, cpu->PC-2);
 }
 
 void set_reg(CPU *cpu, const uint8_t reg, const uint8_t value) {
@@ -70,6 +73,216 @@ uint8_t read_reg(const CPU *cpu, const uint8_t reg) {
     return 0;
 }
 
+void set_flags(CPU *cpu, const uint16_t value, const uint8_t values[2], const uint8_t mask) {
+    // mask = 0b0000, 1 - O, 2 - C, 3 - N, 4 - Z
+    if ((mask & 0b1) == 0) cpu->FR.Z = value == 0;
+    if ((mask & 0b10) == 0) cpu->FR.N = (value & 0x80) != 0;
+    if ((mask & 0b100) == 0) cpu->FR.C = value > 255;
+    if ((mask & 0b1000) == 0) {
+        if (values[0] > 0 && values[1] > 0) cpu->FR.O = (value & 0x80) != 0;
+        else if (values[0] < 0 && values[1] < 0) cpu->FR.O = (value & 0x80) == 0;
+    }
+}
+
+void decode_reg_reg(CPU *cpu, uint16_t *values) {
+    uint8_t tmp = fetch_byte(cpu);
+    values[0] = tmp & 0x0F; // reg 1
+    values[1] = (tmp >> 4) & 0x0F; // reg 2
+}
+
+void decode_reg_imm(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF; // register
+    values[1] = fetch_byte(cpu); // immediate
+}
+
+void decode_reg_abs(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF; // register
+    values[1] = fetch_word(cpu); // absolute
+}
+
+void decode_reg_indreg(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF;
+    const uint8_t tmp = fetch_byte(cpu);
+    values[1] = tmp & 0x0F;         // idx reg low
+    values[2] = (tmp >> 4) & 0x0F;  // idx reg high
+}
+
+void decode_reg_idx(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF;  // reg 1
+    const uint8_t tmp = fetch_byte(cpu);
+    values[1] = tmp & 0x0F;             // idx reg low
+    values[2] = (tmp >> 4) & 0x0F;      // idx reg high
+    values[3] = fetch_word(cpu);        // index
+}
+
+void decode_abs_reg(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_word(cpu); // absolute
+    values[1] = fetch_byte(cpu) & 0xF; // register
+}
+
+void decode_indreg_reg(CPU *cpu, uint16_t *values) {
+    const uint8_t tmp = fetch_byte(cpu);
+    values[0] = tmp & 0x0F; // idx reg low
+    values[1] = (tmp >> 4) & 0x0F; // idx reg high
+    values[2] = fetch_byte(cpu) & 0xF;
+}
+
+void decode_idx_reg(CPU *cpu, uint16_t *values) {
+    const uint8_t tmp = fetch_byte(cpu);
+    values[0] = tmp & 0x0F;             // idx reg low
+    values[1] = (tmp >> 4) & 0x0F;      // idx reg high
+    values[2] = fetch_word(cpu);        // index
+    values[3] = fetch_byte(cpu) & 0xF;  // reg 1
+}
+
+void decode_reg(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF;
+}
+
+void decode_imm(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu);
+}
+
+void decode_abs(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_word(cpu);
+}
+
+void decode_indreg(CPU *cpu, uint16_t *values) {
+    const uint8_t tmp = fetch_byte(cpu);
+    values[0] = tmp & 0x0F;             // idx reg low
+    values[1] = (tmp >> 4) & 0x0F;      // idx reg high
+}
+
+void execute_mov(CPU *cpu, const uint8_t instruction) {
+    const uint8_t type = instruction & 0b00011100;
+    if (type == 0) { // mov reg, reg
+        uint16_t values[2]; // 0: dest, 1: src
+        decode_reg_reg(cpu, values);
+        set_reg(cpu, values[0], read_reg(cpu, values[1]));
+    } else if (type == 0b001 << 2) { // mov reg, #imm
+        uint16_t values[2]; // 0: dest, 1: src
+        decode_reg_imm(cpu, values);
+        set_reg(cpu, values[0], values[1]);
+    } else if (type == 0b010 << 2) { // mov reg, abs
+        uint16_t values[2];
+        decode_reg_abs(cpu, values);
+        set_reg(cpu, values[0], read_byte(&cpu->memory, values[1]));
+    } else if (type == 0b011 << 2) { // mov reg, (h(igh)Reg, l(ow)Reg)
+        uint16_t values[3]; // 0: dest, 1: low reg, 2: high reg
+        decode_reg_indreg(cpu, values);
+        set_reg(cpu, values[0],
+            read_byte(&cpu->memory, read_reg(cpu, values[1]) | read_reg(cpu, values[2]) << 8));
+    } else if (type == 0b100 << 2) { // mov reg, [(h(igh)Reg, l(ow)Reg)±offset]
+        uint16_t values[4]; // 0: dest, 1: low reg, 2: high reg, 3: offset
+        decode_reg_idx(cpu, values);
+        const uint16_t address = (read_reg(cpu, values[1]) | read_reg(cpu, values[2]) << 8) + (int16_t)values[3];
+        set_reg(cpu, address, read_byte(&cpu->memory, address));
+    } else if (type == 0b101 << 2) { // mov abs, reg
+        uint16_t values[2]; // 0: abs, 1: reg
+        decode_abs_reg(cpu, values);
+        write_byte(&cpu->memory, values[0], read_reg(cpu, values[1]));
+    } else if (type == 0b110 << 2) { // mov (h(igh)Reg, l(ow)Reg), reg
+        uint16_t values[3]; // 0: low reg, 1: high reg 2: reg
+        decode_indreg_reg(cpu, values);
+        write_byte(&cpu->memory,read_reg(cpu, values[0])
+                 + read_reg(cpu, values[1]), read_reg(cpu, values[2]));
+    } else if (type == 0b111 << 2) { // mov [(h(igh)Reg, l(ow)Reg)±offset], reg
+        uint16_t values[4]; // 0: low reg, 1: high reg, 2: offset, 3: dest
+        decode_idx_reg(cpu, values);
+        const uint16_t address = (read_reg(cpu, values[0]) | read_reg(cpu, values[1]) << 8) + (int16_t)values[2];
+        write_byte(&cpu->memory, address, read_reg(cpu, values[3]));
+    }
+}
+
+void execute_complexArith(CPU *cpu, const uint8_t instruction, const uint8_t arith_type, const uint8_t flag_mask) {
+    // arith_types:
+    // 0 - add,
+    // 1 - sub,
+    // 2 - mul,
+    // 3 - div
+    // 4 - and
+    // 5 - or
+    // 6 - xor
+    const uint8_t type = instruction & 0b00001100;
+    uint16_t values[2];
+    int8_t operand[2];
+    if (type == 0) { // inst reg_1, reg_2
+        decode_reg_reg(cpu, values);
+        operand[1] = (int8_t)read_reg(cpu, values[1]);
+    } else if (type == 0b01 << 2) {
+        decode_reg_imm(cpu, values);
+        operand[1] = (int8_t)values[1];
+    }
+    operand[0] = read_reg(cpu, values[0]); // NOLINT(*-narrowing-conversions)
+    uint16_t result;
+    switch (arith_type) {
+        case 0:
+            result = operand[0] + operand[1];
+            break;
+        case 1:
+            result = operand[0] - operand[1];
+            break;
+        case 2:
+            result = operand[0] * operand[1];
+            break;
+        case 3:
+            result = operand[0] / operand[1];
+            break;
+        case 4:
+            result = operand[0] & operand[1];
+            break;
+        case 5:
+            result = operand[0] | operand[1];
+            break;
+        case 6:
+            result = operand[0] ^ operand[1];
+            break;
+        default:
+            printf("arithmetic type error\n");
+            exit(10);
+    }
+
+    set_reg(cpu, values[0], result);
+    set_flags(cpu, result, operand, flag_mask);
+}
+
+void execute_simpleArith(CPU *cpu, const uint8_t instruction, const uint8_t arith_type, const uint8_t flag_mask) {
+    // arith_types:
+    // 0 - inc,
+    // 1 - dec,
+    // 2 - shl,
+    // 3 - shr,
+    // 4 - not
+    uint16_t values[1];
+    decode_reg(cpu, values);
+
+    const uint8_t reg_val = read_reg(cpu, values[0]);
+    uint16_t result;
+    switch (arith_type) {
+        case 0:
+            result = reg_val + 1;
+            break;
+        case 1:
+            result = reg_val - 1;
+            break;
+        case 2:
+            result = reg_val << 1;
+            break;
+        case 3:
+            result = reg_val >> 1;
+            break;
+        case 4:
+            result = !reg_val;
+            break;
+        default:
+            printf("arithmetic type error\n");
+            exit(20);
+    }
+
+    set_reg(cpu, values[0], result);
+    set_flags(cpu, result, &reg_val, flag_mask);
+}
+
 void CPU_init(CPU *cpu) {
     memory_init(&cpu->memory);
     memset(&cpu->ports, 0, sizeof(cpu->ports));
@@ -81,106 +294,87 @@ void reset(CPU *cpu) {
     cpu->SP = cpu->BP = 0x0100; // SP and BP set to arbitrary values for testing
     cpu->FR.flags = 0x0;
     // get jump address
-    const uint8_t low = fetch_byte(cpu, cpu->PC++);
-    const uint8_t high = fetch_byte(cpu, cpu->PC++);
-    const uint16_t address = ((uint16_t)high << 8) | low;
+    const uint16_t address = fetch_word(cpu);
     cpu->PC = address;
 }
 
 void execute(CPU *cpu) {
-    uint8_t registers;
-    uint8_t dst;
-    uint8_t src;
-    uint8_t value;
-    uint8_t low;
-    uint8_t high;
-    uint16_t address;
     while (1) {
-        const uint8_t instruction = fetch_byte(cpu, cpu->PC++);
-        switch (instruction) {
-            case MOV_REG_REG: // MOV Rdest, Rsrc
-                registers = fetch_byte(cpu, cpu->PC++);
-                src = read_reg(cpu, registers & 0x0F);
-                set_reg(cpu, (registers & 0xF0) >> 4, src);
+        const uint8_t instruction = fetch_byte(cpu);
+        const uint8_t base_opcode = (instruction & 0b11) == 0 ? instruction & 0b11100011 : instruction & 0b11110011;
+        switch (base_opcode) {
+            case MOV:
+                execute_mov(cpu, instruction);
                 break;
-            case MOV_REG_IMM: // MOV Rdest, imm8
-                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                value = fetch_byte(cpu, cpu->PC++);
-                set_reg(cpu, dst, value);
+            case PUSH: // TODO
                 break;
-            case MOV_REG_ABS: // MOV Rdest, imm16
-                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                low = fetch_byte(cpu, cpu->PC++);
-                high = fetch_byte(cpu, cpu->PC++);
-                address = ((uint16_t)high << 8) | low;
-                value = fetch_byte(cpu, address);
-                set_reg(cpu, dst, value);
+            case POP: // TODO
                 break;
-            case MOV_REG_IND:
-                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                src = fetch_byte(cpu, cpu->PC++);
-                low = read_reg(cpu, src & 0x0F);
-                high = read_reg(cpu, (src & 0xF0) >> 4);
-                address = ((uint16_t)high << 8) | low;
-                value = fetch_byte(cpu, address);
-                set_reg(cpu, dst, value);
+            case INB: // TODO
                 break;
-            case MOV_REG_IDX:
-                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                src = fetch_byte(cpu, cpu->PC++);
-                low = read_reg(cpu, src & 0x0F);
-                high = read_reg(cpu, (src & 0xF0) >> 4);
-                address = ((uint16_t)high << 8) | low;
-                low = fetch_byte(cpu, cpu->PC++);
-                high = fetch_byte(cpu, cpu->PC++);
-                address += ((uint16_t)high << 8) | low;
-                value = fetch_byte(cpu, address);
-                set_reg(cpu, dst, value);
+            case OUTB: // TODO
                 break;
-            case MOV_ABS_REG:
-                low = fetch_byte(cpu, cpu->PC++);
-                high = fetch_byte(cpu, cpu->PC++);
-                address = ((uint16_t)high << 8) | low;
-                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                value = read_reg(cpu, src >> 4);
-                set_byte(cpu, address, value);
+            case ADD:
+                execute_complexArith(cpu, instruction, 0);
                 break;
-            case MOV_IND_REG:
-                dst = fetch_byte(cpu, cpu->PC++);
-                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                low = read_reg(cpu, dst & 0x0F);
-                high = read_reg(cpu, (dst & 0xF0) >> 4);
-                address = ((uint16_t)high << 8) | low;
-                value = read_reg(cpu, src >> 4);
-                set_byte(cpu, address, value);
+            case SUB:
+                execute_complexArith(cpu, instruction, 1);
                 break;
-            case MOV_IDX_REG:
-                dst = fetch_byte(cpu, cpu->PC++);
-                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                low = read_reg(cpu, dst & 0x0F);
-                high = read_reg(cpu, (dst & 0xF0) >> 4);
-                address = ((uint16_t)high << 8) | low;
-                low = fetch_byte(cpu, cpu->PC++);
-                high = fetch_byte(cpu, cpu->PC++);
-                address += ((uint16_t)high << 8) | low;
-                value = read_reg(cpu, src >> 4);
-                set_byte(cpu, address, value);
+            case CMP: // TODO
                 break;
-            case ADD_REG_REG:
-                registers = fetch_byte(cpu, cpu->PC++);
-                const int8_t val1 = (int8_t)read_reg(cpu, registers & 0x0F);
-                const int8_t val2 = (int8_t)read_reg(cpu, (registers & 0xF0) >> 4);
-                const uint16_t sum = (uint16_t)val1 + (uint16_t)val2;
-                cpu->FR.Z = sum == 0;
-                cpu->FR.N = (sum & 0x80) != 0;
-                cpu->FR.C = sum > 255;
-                if (val1 > 0 && val2 > 0) cpu->FR.O = (sum & 0x80) != 0;
-                else if (val1 < 0 && val2 < 0) cpu->FR.O = (sum & 0x80) == 0;
-                set_reg(cpu, (registers & 0xF0) >> 4, sum);
+            case INC: // TODO
+                break;
+            case DEC: // TODO
+                break;
+            case MUL:
+                execute_complexArith(cpu, instruction, 2);
+                break;
+            case DIV:
+                execute_complexArith(cpu, instruction, 3);
+                break;
+            case AND: // TODO
+                break;
+            case OR: // TODO
+                break;
+            case XOR: // TODO
+                break;
+            case NOT: // TODO
+                break;
+            case SHL: // TODO
+                break;
+            case SHR: // TODO
+                break;
+            case JMP: // TODO
+                break;
+            case JZ: // TODO
+                break;
+            case JNZ: // TODO
+                break;
+            case JC: // TODO
+                break;
+            case JNC: // TODO
+                break;
+            case JO: // TODO
+                break;
+            case JNO: // TODO
+                break;
+            case JN: // TODO
+                break;
+            case JNN: // TODO
+                break;
+            case CALL: // TODO
+                break;
+            case RET: // TODO
                 break;
             case HLT:
                 return;
             case NOP:
+                break;
+            case CLI: // TODO
+                break;
+            case STI: // TODO
+                break;
+            case IRET: // TODO
                 break;
             default:
                 printf("Instruction not handled\nOpcode: %02x", instruction);
