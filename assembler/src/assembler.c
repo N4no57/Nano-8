@@ -74,7 +74,7 @@ void get_lines(char ***lines, const char *filename, int *num_lines, int *line_ca
 	char buffer[MAX_LINE_LENGTH];
 	while (fgets(buffer, MAX_LINE_LENGTH, in)) {
 		if (*num_lines >= *line_capacity - 1) {
-			char **tmp = realloc(lines, *line_capacity * 2 * sizeof(char *));
+			char **tmp = realloc(*lines, *line_capacity * 2 * sizeof(char *));
 			if (!tmp) {
 				printf("Memory allocation error\n");
 				free_lines(*lines, *num_lines);
@@ -152,7 +152,7 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 				consume_token(&tok_idx, &current_token, tokens);
 				continue;
 			}
-			printf("bad child");
+			printf("Invalid Label usage");
 			exit(1);
 		}
 
