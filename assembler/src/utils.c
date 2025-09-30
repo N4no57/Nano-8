@@ -142,7 +142,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                 if (reloc_table) relocationTableAppend(reloc_table, current_tok->str_val,
                     get_segment_index(segTable, &current_seg), current_seg.size, type);
                 consume_token(tok_idx, current_tok, tokens);
-                operand.kind = type+3;
+                operand.kind = type < RELOC_RELAX ? type+3 : 3;
                 // placeholder value. serves as both flag that relocationEntry has been appended to relocation table and for the object file
                 operand.imm = 0x7FFFFFFF;
                 return operand;

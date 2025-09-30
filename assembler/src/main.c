@@ -6,7 +6,7 @@
 #include <getopt.h>
 
 #define OUTPUT_DEFAULT "a.o"
-#define ASSEMBLER_VERSION "1.2.4"
+#define ASSEMBLER_VERSION "1.2.4" // TODO update version to 1.3.0 after adding ALL instructions... hopefully
 
 // flags
 bool objDump = 0;
