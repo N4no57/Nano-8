@@ -12,12 +12,12 @@
 typedef struct {
     enum { NONE, IMMEDIATE, REGISTER, ABSOLUTE, RELATIVE, INDIRECT_MEM, INDIRECT_REG, INDEXED_MEM} kind;
     union {
-        int imm; // can be an actual immediate, resolved register or memory address. interpretation dependent on instruction/operand
-        int reg;
+        uint64_t imm; // can be an actual immediate, resolved register or memory address. interpretation dependent on instruction/operand
+        uint64_t reg;
         struct {
-            int reg_high;
-            int reg_low;
-            int offset;
+            uint64_t reg_high;
+            uint64_t reg_low;
+            uint64_t offset;
         } mem_pair;
     };
 } ParsedOperand;

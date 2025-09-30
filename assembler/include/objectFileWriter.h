@@ -48,6 +48,7 @@ struct RelocationEntry {
     char name[16];
     uint16_t segment_index;
     uint16_t segment_offset;
+    int16_t addend; // signed offset
     uint8_t type;
 };
 

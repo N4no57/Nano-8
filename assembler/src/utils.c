@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 void relocationTableAppend(struct RelocationTable *relocTable, const char *name,
-    const uint16_t segment_index, const uint16_t segment_offset, const uint8_t type) {
+    const uint16_t segment_index, const uint16_t segment_offset, const int16_t addend, const uint8_t type) {
     if (relocTable->numRelocations >= relocTable->capacity) {
         relocTable->capacity *= 2;
         struct RelocationEntry *tmp = realloc(relocTable->relocations, relocTable->capacity * sizeof(struct RelocationEntry));
@@ -23,6 +23,7 @@ void relocationTableAppend(struct RelocationTable *relocTable, const char *name,
     strcpy(relocTable->relocations[relocTable->numRelocations].name, name);
     relocTable->relocations[relocTable->numRelocations].segment_index = segment_index;
     relocTable->relocations[relocTable->numRelocations].segment_offset = segment_offset;
+    relocTable->relocations[relocTable->numRelocations].addend = addend;
     relocTable->relocations[relocTable->numRelocations].type = type;
 
     relocTable->numRelocations++;
@@ -122,13 +123,23 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                     add_symbol(symbol_table, &current_seg, current_tok->str_val, current_seg.size);
                     symbol_table->data[symbol_table->count-1].defined = DEFINED_FALSE;
                 }
+                consume_token(tok_idx, current_tok, tokens);
+                int16_t addend = 0;
+                if (current_tok->type == TOKEN_SYMBOL
+                    && current_tok->str_val[0] == '+' || current_tok->str_val[0] == '-') {
+                    char sign = current_tok->str_val[0];
+                    consume_token(tok_idx, current_tok, tokens);
+                    if (current_tok->type == TOKEN_NUMBER) {
+                        addend = (int16_t)current_tok->int_value;
+                        if (sign == '-') addend *= -1;
+                    }
+                }
+
                 uint8_t type = RELOC_ABSOLUTE;
                 if (strcmp(mnemonic.str_val, "call") == 0 || strcmp(mnemonic.str_val, "jmp") == 0) {
-                    Symbol tmp;
-                    find_symbol(symbol_table, current_tok->str_val, &tmp);
-                    int32_t offset = (int32_t)(tmp.offset - (current_seg.size+1));
+                    int32_t offset = (int32_t)(s.offset - (current_seg.size+1));
                     const uint32_t current_seg_idx = get_segment_index(segTable, &current_seg);
-                    const uint32_t symbol_seg_idx = get_segment_index(segTable, tmp.segment);
+                    const uint32_t symbol_seg_idx = get_segment_index(segTable, s.segment);
                     if (current_seg_idx == symbol_seg_idx) {
                         if (offset < -128 || offset > 127) {
                             type = RELOC_ABSOLUTE;
@@ -139,11 +150,12 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                         type = RELOC_RELAX;
                     }
                 }
-                if (reloc_table) relocationTableAppend(reloc_table, current_tok->str_val,
-                    get_segment_index(segTable, &current_seg), current_seg.size, type);
-                consume_token(tok_idx, current_tok, tokens);
+                if (reloc_table) relocationTableAppend(reloc_table, s.label,
+                    get_segment_index(segTable, &current_seg),
+                    current_seg.size, addend, type);
                 operand.kind = type < RELOC_RELAX ? type+3 : 3;
-                // placeholder value. serves as both flag that relocationEntry has been appended to relocation table and for the object file
+                // serves as both flag that relocationEntry has been appended to relocation table
+                // and placeholder for the object file
                 operand.imm = 0x7FFFFFFF;
                 return operand;
 
@@ -160,7 +172,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                             printf("Invalid token\n");
                             exit(1);
                         }
-                        operand.imm = current_tok->int_value;
+                        operand.imm = (uint64_t)current_tok->int_value;
                         consume_token(tok_idx, current_tok, tokens);
                     } else if (current_tok->type == TOKEN_NUMBER) {
                         operand.kind = INDIRECT_MEM;
@@ -190,7 +202,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                         fprintf(stderr, "Invalid token\n");
                         exit(1);
                     }
-                    int num = current_tok->int_value;
+                    uint64_t num = current_tok->int_value;
                     if (sign == '-') num *= -1;
                     operand.mem_pair.offset = num;
                     consume_token(tok_idx, current_tok, tokens); // offset num
