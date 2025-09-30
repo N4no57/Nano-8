@@ -1,8 +1,8 @@
 #include "../include/cpu.h"
 
-#include <io.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 uint8_t fetch_byte(CPU *cpu) {
     return read_byte(&cpu->memory, cpu->PC++);
@@ -189,6 +189,95 @@ void execute_mov(CPU *cpu, const uint8_t instruction) {
         const uint16_t address = (read_reg(cpu, values[0]) | read_reg(cpu, values[1]) << 8) + (int16_t)values[2];
         write_byte(&cpu->memory, address, read_reg(cpu, values[3]));
     }
+}
+
+void execute_complexArith(CPU *cpu, const uint8_t instruction, const uint8_t arith_type, const uint8_t flag_mask) {
+    // arith_types:
+    // 0 - add,
+    // 1 - sub,
+    // 2 - mul,
+    // 3 - div
+    // 4 - and
+    // 5 - or
+    // 6 - xor
+    const uint8_t type = instruction & 0b00001100;
+    uint16_t values[2];
+    int8_t operand[2];
+    if (type == 0) { // inst reg_1, reg_2
+        decode_reg_reg(cpu, values);
+        operand[1] = (int8_t)read_reg(cpu, values[1]);
+    } else if (type == 0b01 << 2) {
+        decode_reg_imm(cpu, values);
+        operand[1] = (int8_t)values[1];
+    }
+    operand[0] = read_reg(cpu, values[0]); // NOLINT(*-narrowing-conversions)
+    uint16_t result;
+    switch (arith_type) {
+        case 0:
+            result = operand[0] + operand[1];
+            break;
+        case 1:
+            result = operand[0] - operand[1];
+            break;
+        case 2:
+            result = operand[0] * operand[1];
+            break;
+        case 3:
+            result = operand[0] / operand[1];
+            break;
+        case 4:
+            result = operand[0] & operand[1];
+            break;
+        case 5:
+            result = operand[0] | operand[1];
+            break;
+        case 6:
+            result = operand[0] ^ operand[1];
+            break;
+        default:
+            printf("arithmetic type error\n");
+            exit(10);
+    }
+
+    set_reg(cpu, values[0], result);
+    set_flags(cpu, result, operand, flag_mask);
+}
+
+void execute_simpleArith(CPU *cpu, const uint8_t instruction, const uint8_t arith_type, const uint8_t flag_mask) {
+    // arith_types:
+    // 0 - inc,
+    // 1 - dec,
+    // 2 - shl,
+    // 3 - shr,
+    // 4 - not
+    uint16_t values[1];
+    decode_reg(cpu, values);
+
+    const uint8_t reg_val = read_reg(cpu, values[0]);
+    uint16_t result;
+    switch (arith_type) {
+        case 0:
+            result = reg_val + 1;
+            break;
+        case 1:
+            result = reg_val - 1;
+            break;
+        case 2:
+            result = reg_val << 1;
+            break;
+        case 3:
+            result = reg_val >> 1;
+            break;
+        case 4:
+            result = !reg_val;
+            break;
+        default:
+            printf("arithmetic type error\n");
+            exit(20);
+    }
+
+    set_reg(cpu, values[0], result);
+    set_flags(cpu, result, &reg_val, flag_mask);
 }
 
 void CPU_init(CPU *cpu) {
