@@ -53,8 +53,7 @@ InstructionDef instruction_table[] = {
 	{"nop", 0x13, 0, encode_opcode, get_size_nop },
 	{"cli", 0x23, 0, encode_opcode, get_size_cli },
 	{"sti", 0x33, 0, encode_opcode, get_size_sti },
-	{"int", 0x43, 1, encode_opcode, get_size_int },
-	{"iret", 0x53, 0, encode_opcode, get_size_iret },
+	{"iret", 0x43, 0, encode_opcode, get_size_iret },
 };
 int table_size = sizeof(instruction_table) / sizeof(InstructionDef);
 
