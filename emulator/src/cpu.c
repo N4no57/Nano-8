@@ -73,12 +73,15 @@ uint8_t read_reg(const CPU *cpu, const uint8_t reg) {
     return 0;
 }
 
-void set_flags(CPU *cpu, const uint16_t value, const uint8_t values[2]) {
-    cpu->FR.Z = value == 0;
-    cpu->FR.N = (value & 0x80) != 0;
-    cpu->FR.C = value > 255;
-    if (values[0] > 0 && values[1] > 0) cpu->FR.O = (value & 0x80) != 0;
-    else if (values[0] < 0 && values[1] < 0) cpu->FR.O = (value & 0x80) == 0;
+void set_flags(CPU *cpu, const uint16_t value, const uint8_t values[2], const uint8_t mask) {
+    // mask = 0b0000, 1 - O, 2 - C, 3 - N, 4 - Z
+    if ((mask & 0b1) == 0) cpu->FR.Z = value == 0;
+    if ((mask & 0b10) == 0) cpu->FR.N = (value & 0x80) != 0;
+    if ((mask & 0b100) == 0) cpu->FR.C = value > 255;
+    if ((mask & 0b1000) == 0) {
+        if (values[0] > 0 && values[1] > 0) cpu->FR.O = (value & 0x80) != 0;
+        else if (values[0] < 0 && values[1] < 0) cpu->FR.O = (value & 0x80) == 0;
+    }
 }
 
 void decode_reg_reg(CPU *cpu, uint16_t *values) {
