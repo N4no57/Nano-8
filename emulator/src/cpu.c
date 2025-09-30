@@ -166,84 +166,17 @@ void reset(CPU *cpu) {
 }
 
 void execute(CPU *cpu) {
-    uint8_t registers;
-    uint8_t dst;
-    uint8_t src;
-    uint8_t value;
-    uint16_t address;
     while (1) {
         const uint8_t instruction = fetch_byte(cpu);
-        switch (instruction) {
-            case MOV_REG_REG: // MOV Rdest, Rsrc
-                registers = fetch_byte(cpu);
-                src = read_reg(cpu, registers & 0x0F);
-                set_reg(cpu, (registers & 0xF0) >> 4, src);
+        const uint8_t base_opcode = (instruction & 0b11) == 0 ? instruction & 0b11100011 : instruction & 0b11110011;
+        switch (base_opcode) {
+            case MOV:
+                execute_mov(cpu, instruction);
                 break;
-            case MOV_REG_IMM: // MOV Rdest, imm8
-                dst = fetch_byte(cpu) & 0xF0;
-                value = fetch_byte(cpu);
-                set_reg(cpu, dst, value);
-                break;
-            case MOV_REG_ABS: // MOV Rdest, imm16
-                dst = fetch_byte(cpu) & 0xF0;
-                address = fetch_word(cpu);
-                value = read_byte(&cpu->memory, address);
-                set_reg(cpu, dst, value);
-                break;
-            case MOV_REG_IND:
-                dst = fetch_byte(cpu) & 0xF0;
-                src = fetch_byte(cpu);
-                address = ((uint16_t)read_reg(cpu, (src & 0xF0) >> 4) << 8)
-                        | read_reg(cpu, src & 0x0F);
-                value = read_byte(&cpu->memory, address);
-                set_reg(cpu, dst, value);
-                break;
-            case MOV_REG_IDX:
-                dst = fetch_byte(cpu) & 0xF0;
-                src = fetch_byte(cpu);
-                address = ((uint16_t)read_reg(cpu, (src & 0xF0) >> 4) << 8)
-                        | read_reg(cpu, src & 0x0F);
-                address += fetch_word(cpu);
-                value = read_byte(&cpu->memory, address);
-                set_reg(cpu, dst, value);
-                break;
-            case MOV_ABS_REG:
-                address = fetch_word(cpu);
-                src = fetch_byte(cpu) & 0xF0;
-                value = read_reg(cpu, src >> 4);
-                write_byte(&cpu->memory, address, value);
-                break;
-            case MOV_IND_REG:
-                dst = fetch_byte(cpu);
-                src = fetch_byte(cpu) & 0xF0;
-                address = ((uint16_t)read_reg(cpu, (dst & 0xF0) >> 4) << 8)
-                        | read_reg(cpu, dst & 0x0F);
-                value = read_reg(cpu, src >> 4);
-                write_byte(&cpu->memory, address, value);
-                break;
-            case MOV_IDX_REG:
-                dst = fetch_byte(cpu);
-                src = fetch_byte(cpu) & 0xF0;
-                address = ((uint16_t)read_reg(cpu, (dst & 0xF0) >> 4) << 8)
-                        | read_reg(cpu, dst & 0x0F);
-                address += fetch_word(cpu);
-                value = read_reg(cpu, src >> 4);
-                write_byte(&cpu->memory, address, value);
-                break;
-            case ADD_REG_REG:
-                registers = fetch_byte(cpu);
-                const int8_t vals[2] = {
-                    (int8_t)read_reg(cpu, registers & 0x0F),
-                    (int8_t)read_reg(cpu, (registers & 0xF0) >> 4)
-                };
-                const uint16_t sum = (uint16_t)vals[0] + (uint16_t)vals[1];
-                set_reg(cpu, (registers & 0xF0) >> 4, sum);
-                set_flags(cpu, sum, vals);
+            case PUSH:
                 break;
             case HLT:
                 return;
-            case NOP:
-                break;
             default:
                 printf("Instruction not handled\nOpcode: %02x", instruction);
                 return;
