@@ -23,7 +23,7 @@ typedef struct {
     TokenType type;
     union {
         char *str_val;
-        int int_value;
+        uint64_t int_value;
     };
 } Token;
 

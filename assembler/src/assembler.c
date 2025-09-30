@@ -164,7 +164,29 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 				consume_token(&tok_idx, &current_token, tokens);
 				current_segment->size++;
 				continue;
-			} else if (strcmp(current_token.str_val, ".segment") == 0) {
+			}
+			if (strcmp(current_token.str_val, ".dw") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
+				consume_token(&tok_idx, &current_token, tokens);
+				current_segment->size+=2;
+				continue;
+			}
+			if (strcmp(current_token.str_val, ".dd") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
+				consume_token(&tok_idx, &current_token, tokens);
+				current_segment->size+=4;
+				continue;
+			}
+			if (strcmp(current_token.str_val, ".dq") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
+				consume_token(&tok_idx, &current_token, tokens);
+				current_segment->size+=8;
+				continue;
+			}
+			if (strcmp(current_token.str_val, ".segment") == 0) {
 				consume_token(&tok_idx, &current_token, tokens);
 				char segName[16];
 				if (current_token.type != TOKEN_LABEL) {
@@ -191,7 +213,8 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 				appendSegment(segment_table, s);
 				current_segment = &segment_table->segments[segment_table->count-1];
 				continue;
-			} else if (strcmp(current_token.str_val, ".include") == 0) {
+			}
+			if (strcmp(current_token.str_val, ".include") == 0) {
 				consume_token(&tok_idx, &current_token, tokens); // move past .include directive
 				if (current_token.type != TOKEN_LABEL) {
 					fprintf(stderr, "Unexpected token '%s'\n", current_token.str_val);
@@ -200,10 +223,9 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 				includeFile(current_token.str_val, tokens, tok_idx);
 				consume_token(&tok_idx, &current_token, tokens); // eat the filename token
 				continue;
-			} else {
-				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
-				exit(1);
 			}
+			fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
+			exit(1);
 		}
 
 		if (current_token.type == TOKEN_MNEMONIC) {
@@ -295,10 +317,76 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 					current_segment->data = temp;
 				}
 
-				current_segment->data[current_segment->size++] = current_token.int_value;
+				current_segment->data[current_segment->size++] = current_token.int_value & 0xFF;
 				consume_token(&tok_idx, &current_token, tokens);
 				continue;
-			} else if (strcmp(current_token.str_val, ".segment") == 0) {
+			}
+			if (strcmp(current_token.str_val, ".dw") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
+
+				if (current_segment->size >= current_segment->capacity) {
+					current_segment->capacity *= 2;
+					uint8_t *temp = realloc(current_segment->data, current_segment->capacity);
+					if (!temp) {
+						fprintf(stderr, "Error: out of memory\n");
+						exit(1);
+					}
+					current_segment->data = temp;
+				}
+
+				current_segment->data[current_segment->size++] = current_token.int_value & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 8 & 0xFF;
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
+			if (strcmp(current_token.str_val, ".dd") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
+
+				if (current_segment->size >= current_segment->capacity) {
+					current_segment->capacity *= 2;
+					uint8_t *temp = realloc(current_segment->data, current_segment->capacity);
+					if (!temp) {
+						fprintf(stderr, "Error: out of memory\n");
+						exit(1);
+					}
+					current_segment->data = temp;
+				}
+
+				current_segment->data[current_segment->size++] = current_token.int_value & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 8 & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 16 & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 24 & 0xFF;
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
+			if (strcmp(current_token.str_val, ".dq") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (is_base_mod(current_token)) consume_token(&tok_idx, &current_token, tokens);
+
+				if (current_segment->size >= current_segment->capacity) {
+					current_segment->capacity *= 2;
+					uint8_t *temp = realloc(current_segment->data, current_segment->capacity);
+					if (!temp) {
+						fprintf(stderr, "Error: out of memory\n");
+						exit(1);
+					}
+					current_segment->data = temp;
+				}
+
+				current_segment->data[current_segment->size++] = current_token.int_value & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 8 & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 16 & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 24 & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 32 & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 40 & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 48 & 0xFF;
+				current_segment->data[current_segment->size++] = current_token.int_value >> 56 & 0xFF;
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
+			if (strcmp(current_token.str_val, ".segment") == 0) {
 				consume_token(&tok_idx, &current_token, tokens);
 				char segName[16];
 				strcpy(segName, current_token.str_val);
@@ -310,14 +398,14 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 				}
 				fprintf(stderr, "segmentation fault");
 				exit(1);
-			} else if (strcmp(current_token.str_val, ".include") == 0) {
+			}
+			if (strcmp(current_token.str_val, ".include") == 0) {
 				consume_token(&tok_idx, &current_token, tokens);
 				consume_token(&tok_idx, &current_token, tokens);
 				continue;
-			} else {
-				fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
-				exit(1);
 			}
+			fprintf(stderr, "Illegal directive\n---->%s", current_token.str_val);
+			exit(1);
 		}
 
 		if (current_token.type == TOKEN_MNEMONIC) {
