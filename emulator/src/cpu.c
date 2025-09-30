@@ -214,10 +214,72 @@ void execute(CPU *cpu) {
             case MOV:
                 execute_mov(cpu, instruction);
                 break;
-            case PUSH:
+            case PUSH: // TODO
+                break;
+            case POP: // TODO
+                break;
+            case INB:
+                break;
+            case OUTB:
+                break;
+            case ADD:
+                break;
+            case SUB:
+                break;
+            case CMP:
+                break;
+            case INC:
+                break;
+            case DEC:
+                break;
+            case MUL:
+                break;
+            case DIV:
+                break;
+            case AND:
+                break;
+            case OR:
+                break;
+            case XOR:
+                break;
+            case NOT:
+                break;
+            case SHL:
+                break;
+            case SHR:
+                break;
+            case JMP:
+                break;
+            case JZ:
+                break;
+            case JNZ:
+                break;
+            case JC:
+                break;
+            case JNC:
+                break;
+            case JO:
+                break;
+            case JNO:
+                break;
+            case JN:
+                break;
+            case JNN:
+                break;
+            case CALL:
+                break;
+            case RET:
                 break;
             case HLT:
                 return;
+            case NOP:
+                break;
+            case CLI:
+                break;
+            case STI:
+                break;
+            case IRET:
+                break;
             default:
                 printf("Instruction not handled\nOpcode: %02x", instruction);
                 return;
