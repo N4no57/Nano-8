@@ -1,13 +1,16 @@
 #include "../include/cpu.h"
+
+#include <io.h>
 #include <string.h>
 #include <stdio.h>
 
-uint8_t fetch_byte(const CPU *cpu, const uint16_t addr) {
-    return cpu->memory.data[addr];
+uint8_t fetch_byte(CPU *cpu) {
+    return read_byte(&cpu->memory, cpu->PC++);
 }
 
-void set_byte(CPU *cpu, const uint16_t addr, const uint8_t value) {
-    cpu->memory.data[addr] = value;
+uint16_t fetch_word(CPU *cpu) {
+    cpu->PC += 2;
+    return read_word(&cpu->memory, cpu->PC-2);
 }
 
 void set_reg(CPU *cpu, const uint8_t reg, const uint8_t value) {
@@ -70,6 +73,83 @@ uint8_t read_reg(const CPU *cpu, const uint8_t reg) {
     return 0;
 }
 
+void set_flags(CPU *cpu, const uint16_t value, const uint8_t values[2]) {
+    cpu->FR.Z = value == 0;
+    cpu->FR.N = (value & 0x80) != 0;
+    cpu->FR.C = value > 255;
+    if (values[0] > 0 && values[1] > 0) cpu->FR.O = (value & 0x80) != 0;
+    else if (values[0] < 0 && values[1] < 0) cpu->FR.O = (value & 0x80) == 0;
+}
+
+void decode_reg_reg(CPU *cpu, uint16_t *values) {
+    uint8_t tmp = fetch_byte(cpu);
+    values[0] = tmp & 0x0F; // reg 1
+    values[1] = (tmp >> 4) & 0x0F; // reg 2
+}
+
+void decode_reg_imm(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF; // register
+    values[1] = fetch_byte(cpu); // immediate
+}
+
+void decode_reg_abs(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF; // register
+    values[1] = fetch_word(cpu); // absolute
+}
+
+void decode_reg_indreg(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF;
+    const uint8_t tmp = fetch_byte(cpu);
+    values[1] = tmp & 0x0F;         // idx reg low
+    values[2] = (tmp >> 4) & 0x0F;  // idx reg high
+}
+
+void decode_reg_idx(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF;  // reg 1
+    const uint8_t tmp = fetch_byte(cpu);
+    values[1] = tmp & 0x0F;             // idx reg low
+    values[2] = (tmp >> 4) & 0x0F;      // idx reg high
+    values[3] = fetch_word(cpu);        // index
+}
+
+void decode_abs_reg(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_word(cpu); // absolute
+    values[1] = fetch_byte(cpu) & 0xF; // register
+}
+
+void decode_indreg_reg(CPU *cpu, uint16_t *values) {
+    const uint8_t tmp = fetch_byte(cpu);
+    values[0] = tmp & 0x0F; // idx reg low
+    values[1] = (tmp >> 4) & 0x0F; // idx reg high
+    values[2] = fetch_byte(cpu) & 0xF;
+}
+
+void decode_idx_reg(CPU *cpu, uint16_t *values) {
+    const uint8_t tmp = fetch_byte(cpu);
+    values[0] = tmp & 0x0F;             // idx reg low
+    values[1] = (tmp >> 4) & 0x0F;      // idx reg high
+    values[2] = fetch_word(cpu);        // index
+    values[3] = fetch_byte(cpu) & 0xF;  // reg 1
+}
+
+void decode_reg(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu) & 0xF;
+}
+
+void decode_imm(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_byte(cpu);
+}
+
+void decode_abs(CPU *cpu, uint16_t *values) {
+    values[0] = fetch_word(cpu);
+}
+
+void decode_indreg(CPU *cpu, uint16_t *values) {
+    const uint8_t tmp = fetch_byte(cpu);
+    values[0] = tmp & 0x0F;             // idx reg low
+    values[1] = (tmp >> 4) & 0x0F;      // idx reg high
+}
+
 void CPU_init(CPU *cpu) {
     memory_init(&cpu->memory);
     memset(&cpu->ports, 0, sizeof(cpu->ports));
@@ -81,9 +161,7 @@ void reset(CPU *cpu) {
     cpu->SP = cpu->BP = 0x0100; // SP and BP set to arbitrary values for testing
     cpu->FR.flags = 0x0;
     // get jump address
-    const uint8_t low = fetch_byte(cpu, cpu->PC++);
-    const uint8_t high = fetch_byte(cpu, cpu->PC++);
-    const uint16_t address = ((uint16_t)high << 8) | low;
+    const uint16_t address = fetch_word(cpu);
     cpu->PC = address;
 }
 
@@ -92,91 +170,75 @@ void execute(CPU *cpu) {
     uint8_t dst;
     uint8_t src;
     uint8_t value;
-    uint8_t low;
-    uint8_t high;
     uint16_t address;
     while (1) {
-        const uint8_t instruction = fetch_byte(cpu, cpu->PC++);
+        const uint8_t instruction = fetch_byte(cpu);
         switch (instruction) {
             case MOV_REG_REG: // MOV Rdest, Rsrc
-                registers = fetch_byte(cpu, cpu->PC++);
+                registers = fetch_byte(cpu);
                 src = read_reg(cpu, registers & 0x0F);
                 set_reg(cpu, (registers & 0xF0) >> 4, src);
                 break;
             case MOV_REG_IMM: // MOV Rdest, imm8
-                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                value = fetch_byte(cpu, cpu->PC++);
+                dst = fetch_byte(cpu) & 0xF0;
+                value = fetch_byte(cpu);
                 set_reg(cpu, dst, value);
                 break;
             case MOV_REG_ABS: // MOV Rdest, imm16
-                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                low = fetch_byte(cpu, cpu->PC++);
-                high = fetch_byte(cpu, cpu->PC++);
-                address = ((uint16_t)high << 8) | low;
-                value = fetch_byte(cpu, address);
+                dst = fetch_byte(cpu) & 0xF0;
+                address = fetch_word(cpu);
+                value = read_byte(&cpu->memory, address);
                 set_reg(cpu, dst, value);
                 break;
             case MOV_REG_IND:
-                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                src = fetch_byte(cpu, cpu->PC++);
-                low = read_reg(cpu, src & 0x0F);
-                high = read_reg(cpu, (src & 0xF0) >> 4);
-                address = ((uint16_t)high << 8) | low;
-                value = fetch_byte(cpu, address);
+                dst = fetch_byte(cpu) & 0xF0;
+                src = fetch_byte(cpu);
+                address = ((uint16_t)read_reg(cpu, (src & 0xF0) >> 4) << 8)
+                        | read_reg(cpu, src & 0x0F);
+                value = read_byte(&cpu->memory, address);
                 set_reg(cpu, dst, value);
                 break;
             case MOV_REG_IDX:
-                dst = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                src = fetch_byte(cpu, cpu->PC++);
-                low = read_reg(cpu, src & 0x0F);
-                high = read_reg(cpu, (src & 0xF0) >> 4);
-                address = ((uint16_t)high << 8) | low;
-                low = fetch_byte(cpu, cpu->PC++);
-                high = fetch_byte(cpu, cpu->PC++);
-                address += ((uint16_t)high << 8) | low;
-                value = fetch_byte(cpu, address);
+                dst = fetch_byte(cpu) & 0xF0;
+                src = fetch_byte(cpu);
+                address = ((uint16_t)read_reg(cpu, (src & 0xF0) >> 4) << 8)
+                        | read_reg(cpu, src & 0x0F);
+                address += fetch_word(cpu);
+                value = read_byte(&cpu->memory, address);
                 set_reg(cpu, dst, value);
                 break;
             case MOV_ABS_REG:
-                low = fetch_byte(cpu, cpu->PC++);
-                high = fetch_byte(cpu, cpu->PC++);
-                address = ((uint16_t)high << 8) | low;
-                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
+                address = fetch_word(cpu);
+                src = fetch_byte(cpu) & 0xF0;
                 value = read_reg(cpu, src >> 4);
-                set_byte(cpu, address, value);
+                write_byte(&cpu->memory, address, value);
                 break;
             case MOV_IND_REG:
-                dst = fetch_byte(cpu, cpu->PC++);
-                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                low = read_reg(cpu, dst & 0x0F);
-                high = read_reg(cpu, (dst & 0xF0) >> 4);
-                address = ((uint16_t)high << 8) | low;
+                dst = fetch_byte(cpu);
+                src = fetch_byte(cpu) & 0xF0;
+                address = ((uint16_t)read_reg(cpu, (dst & 0xF0) >> 4) << 8)
+                        | read_reg(cpu, dst & 0x0F);
                 value = read_reg(cpu, src >> 4);
-                set_byte(cpu, address, value);
+                write_byte(&cpu->memory, address, value);
                 break;
             case MOV_IDX_REG:
-                dst = fetch_byte(cpu, cpu->PC++);
-                src = fetch_byte(cpu, cpu->PC++) & 0xF0;
-                low = read_reg(cpu, dst & 0x0F);
-                high = read_reg(cpu, (dst & 0xF0) >> 4);
-                address = ((uint16_t)high << 8) | low;
-                low = fetch_byte(cpu, cpu->PC++);
-                high = fetch_byte(cpu, cpu->PC++);
-                address += ((uint16_t)high << 8) | low;
+                dst = fetch_byte(cpu);
+                src = fetch_byte(cpu) & 0xF0;
+                address = ((uint16_t)read_reg(cpu, (dst & 0xF0) >> 4) << 8)
+                        | read_reg(cpu, dst & 0x0F);
+                address += fetch_word(cpu);
                 value = read_reg(cpu, src >> 4);
-                set_byte(cpu, address, value);
+                write_byte(&cpu->memory, address, value);
                 break;
             case ADD_REG_REG:
-                registers = fetch_byte(cpu, cpu->PC++);
-                const int8_t val1 = (int8_t)read_reg(cpu, registers & 0x0F);
-                const int8_t val2 = (int8_t)read_reg(cpu, (registers & 0xF0) >> 4);
-                const uint16_t sum = (uint16_t)val1 + (uint16_t)val2;
-                cpu->FR.Z = sum == 0;
-                cpu->FR.N = (sum & 0x80) != 0;
-                cpu->FR.C = sum > 255;
-                if (val1 > 0 && val2 > 0) cpu->FR.O = (sum & 0x80) != 0;
-                else if (val1 < 0 && val2 < 0) cpu->FR.O = (sum & 0x80) == 0;
+                registers = fetch_byte(cpu);
+                const int8_t vals[2] = {
+                    (int8_t)read_reg(cpu, registers & 0x0F),
+                    (int8_t)read_reg(cpu, (registers & 0xF0) >> 4)
+                };
+                const uint16_t sum = (uint16_t)vals[0] + (uint16_t)vals[1];
                 set_reg(cpu, (registers & 0xF0) >> 4, sum);
+                set_flags(cpu, sum, vals);
                 break;
             case HLT:
                 return;
