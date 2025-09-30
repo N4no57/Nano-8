@@ -50,7 +50,6 @@ uint16_t get_size_hlt(int operand_count, int expected_operand_count, ParsedOpera
 uint16_t get_size_nop(int operand_count, int expected_operand_count, ParsedOperand operands[]);
 uint16_t get_size_cli(int operand_count, int expected_operand_count, ParsedOperand operands[]);
 uint16_t get_size_sti(int operand_count, int expected_operand_count, ParsedOperand operands[]);
-uint16_t get_size_int(int operand_count, int expected_operand_count, ParsedOperand operands[]);
 uint16_t get_size_iret(int operand_count, int expected_operand_count, ParsedOperand operands[]);
 
 void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, ParsedOperand operands[]);

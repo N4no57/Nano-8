@@ -456,10 +456,6 @@ uint16_t get_size_sti(int operand_count, int expected_operand_count, ParsedOpera
     return 1;
 }
 
-uint16_t get_size_int(int operand_count, int expected_operand_count, ParsedOperand operands[]) {
-    return 2;
-}
-
 uint16_t get_size_iret(int operand_count, int expected_operand_count, ParsedOperand operands[]) {
     return 1;
 }
