@@ -10,7 +10,11 @@ typedef struct {
 } Memory;
 
 void memory_init(Memory *memory);
-uint8_t readByte(Memory *memory, uint16_t address);
-void writeByte(Memory *memory, uint16_t address, uint8_t data);
+
+uint8_t read_byte(const Memory *memory, uint8_t address);
+uint16_t read_word(const Memory *memory, uint8_t address);
+
+void write_byte(Memory *memory, uint8_t address, uint8_t value);
+void write_word(Memory *memory, uint8_t address, uint16_t value);
 
 #endif //MEMORY_H
