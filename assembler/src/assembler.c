@@ -20,6 +20,8 @@
 #define MAX_LINE_LENGTH 1024
 #define LINE_NUM_BASE_SIZE 16
 
+bool isPassTwo = false;
+
 InstructionDef instruction_table[] = {
 	{"mov", 0x00, 2, encode_mov, get_size_mov },
 	{"push", 0x20, 1, encode_push, get_size_push },
@@ -148,16 +150,6 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 			strcpy(label, current_token.str_val);
 			consume_token(&tok_idx, &current_token, tokens);
 			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ':') {
-				Symbol s;
-				int symbol_idx = find_symbol(symbol_table, label, &s);
-				if (symbol_idx != -1) {
-					if (s.defined == DEFINED_FALSE) {
-						symbol_table->data[symbol_idx].offset = current_segment->size;
-						symbol_table->data[symbol_idx].defined = DEFINED_TRUE;
-						consume_token(&tok_idx, &current_token, tokens);
-					}
-					continue;
-				}
 				add_symbol(symbol_table, current_segment, label, current_segment->size);
 				if (verbose) printf("Defining symbol: %s = 0x%02x\n", label, (uint32_t)current_segment->size);
 				consume_token(&tok_idx, &current_token, tokens);
@@ -294,6 +286,8 @@ void correct_reloc_offset(const struct RelocationTable *reloc_table, const int o
 void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSegmentTable *segment_table, struct RelocationTable *reloc_table) {
 	if (verbose) printf("Pass 2: Encoding instructions\n");
 	int tok_idx = 0;
+
+	isPassTwo = true;
 
 	AssemblingSegment *current_segment = 0;
 	find_segment(segment_table, &current_segment, "code");

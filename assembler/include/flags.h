@@ -10,5 +10,6 @@
 // assembler flags
 extern bool objDump;
 extern bool verbose;
+extern bool isPassTwo;
 
 #endif //FLAGS_H

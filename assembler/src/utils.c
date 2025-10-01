@@ -4,6 +4,7 @@
 
 #include "../include/utils.h"
 #include "../include/segments.h"
+#include "../include/flags.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -119,7 +120,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
         switch (current_tok->type) {
             case TOKEN_LABEL:
                 Symbol s;
-                if (find_symbol(symbol_table, current_tok->str_val, &s) == -1) {
+                if (find_symbol(symbol_table, current_tok->str_val, &s) == -1 && isPassTwo == true) {
                     add_symbol(symbol_table, &current_seg, current_tok->str_val, current_seg.size);
                     symbol_table->data[symbol_table->count-1].defined = DEFINED_FALSE;
                 }
