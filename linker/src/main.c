@@ -1,5 +1,6 @@
 #include "../include/objectFileReader.h"
 #include "../include/linker.h"
+#include "../include/linkerFileParser.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -8,6 +9,9 @@
 #define LINKER_VERSION "1.0.0"
 
 int main(int argc, char **argv) {
+    struct MemoryRegion *a = NULL;
+    struct SegmentRule *b = NULL;
+
     char *output = DEFAULT_FILENAME;
 
     static struct option long_options[] = {
@@ -19,7 +23,7 @@ int main(int argc, char **argv) {
 
     int option;
     int option_index = 0;
-    while ((option = getopt_long(argc, argv, "ho:", long_options, &option_index)) != -1) {
+    while ((option = getopt_long(argc, argv, "ho:C:", long_options, &option_index)) != -1) {
         switch (option) {
             case 'h':
                 printf("Usage: nano8-ld [options]\n");
@@ -30,6 +34,9 @@ int main(int argc, char **argv) {
                 return 0;
             case 'o':
                 output = optarg;
+                break;
+            case 'C':
+                parseFile(optarg, a, b);
                 break;
             case 0:
                 if (strcmp(long_options[option_index].name, "version") == 0) {
