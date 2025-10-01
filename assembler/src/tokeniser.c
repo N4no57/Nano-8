@@ -124,8 +124,8 @@ int isregister(const char *s) {
 
 void parse_number(TokenList *token_list, const char *line, int *i, int base) {
     char buff[64]; int bi = 0;
-    if (isalnum(line[*i])) {
-        while (isalnum(line[*i])) {
+    if (isdigit(line[*i])) {
+        while (isdigit(line[*i])) {
             buff[bi++] = line[(*i)++];
         }
         buff[bi] = '\0';
