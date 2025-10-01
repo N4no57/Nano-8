@@ -8,4 +8,5 @@ add_executable(nano8-ld src/main.c
         src/linker.c include/linker.h
         src/linkerFileParser.c
         include/linkerFileParser.h
+        include/flags.h
 )
