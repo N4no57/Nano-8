@@ -203,6 +203,7 @@ void execute_complexArith(CPU *cpu, const uint8_t instruction, const uint8_t ari
     // 4 - and
     // 5 - or
     // 6 - xor
+    // 7 - cmp
     const uint8_t type = instruction & 0b00001100;
     uint16_t values[2];
     int8_t operand[2];
@@ -237,16 +238,19 @@ void execute_complexArith(CPU *cpu, const uint8_t instruction, const uint8_t ari
         case 6:
             result = operand[0] ^ operand[1];
             break;
+        case 7:
+            result = operand[0] - operand[1];
+            break;
         default:
             printf("arithmetic type error\n");
             exit(10);
     }
 
-    set_reg(cpu, values[0], result);
+    if (arith_type != 7) set_reg(cpu, values[0], result);
     set_flags(cpu, result, operand, flag_mask);
 }
 
-void execute_simpleArith(CPU *cpu, const uint8_t instruction, const uint8_t arith_type, const uint8_t flag_mask) {
+void execute_simpleArith(CPU *cpu, const uint8_t arith_type, const uint8_t flag_mask) {
     // arith_types:
     // 0 - inc,
     // 1 - dec,
@@ -283,6 +287,34 @@ void execute_simpleArith(CPU *cpu, const uint8_t instruction, const uint8_t arit
     set_flags(cpu, result, &reg_val, flag_mask);
 }
 
+void execute_jmp(CPU *cpu, const uint8_t instruction, uint8_t push_old_pc) {
+    const uint8_t type = instruction & 0b0001100;
+
+    uint16_t values[2];
+    uint16_t address = 0;
+    if (type == 0) { // absolute
+        decode_abs(cpu, values);
+        address = cpu->PC;
+        cpu->PC = values[0];
+    } else if (type == 0b01 << 2) { // indirect reg
+        decode_indreg(cpu, values);
+        address = cpu->PC;
+        cpu->PC = read_reg(cpu, values[1]) << 8 | read_reg(cpu, values[0]);
+    } else if (type == 0b10 << 2) { // relative
+        decode_imm(cpu, values);
+        address = cpu->PC;
+        cpu->PC += (int8_t)values[0];
+    } else if (type == 0b11 << 2) { // indirect mem
+        decode_abs(cpu, values);
+        address = cpu->PC;
+        cpu->PC = read_byte(&cpu->memory, values[0]);
+    }
+    if (push_old_pc) {
+        cpu->SP += -2;
+        write_word(&cpu->memory, --cpu->SP, address);
+    }
+}
+
 void CPU_init(CPU *cpu) {
     memory_init(&cpu->memory);
     memset(&cpu->ports, 0, sizeof(cpu->ports));
@@ -306,73 +338,108 @@ void execute(CPU *cpu) {
             case MOV:
                 execute_mov(cpu, instruction);
                 break;
-            case PUSH: // TODO
+            case PUSH:
+                const uint8_t type = instruction & 0b0001100;
+
+                if (type == 0) { // register
+                    write_byte(&cpu->memory, --cpu->SP, read_reg(cpu, fetch_byte(cpu) >> 4));
+                } else if (type == 0b01 << 2) { // immediate
+                    write_byte(&cpu->memory, --cpu->SP, fetch_byte(cpu));
+                }
                 break;
-            case POP: // TODO
+            case POP:
+                set_reg(cpu, fetch_byte(cpu), read_byte(&cpu->memory, cpu->SP++));
                 break;
-            case INB: // TODO
+            case INB:
+                uint8_t port = fetch_byte(cpu);
+                uint8_t reg = fetch_byte(cpu) >> 4;
+                set_reg(cpu, reg, cpu->ports[port]);
                 break;
             case OUTB: // TODO
                 break;
             case ADD:
-                execute_complexArith(cpu, instruction, 0);
+                execute_complexArith(cpu, instruction, 0, 0b1111);
                 break;
             case SUB:
-                execute_complexArith(cpu, instruction, 1);
+                execute_complexArith(cpu, instruction, 1, 0b1111);
                 break;
-            case CMP: // TODO
+            case CMP:
+                execute_complexArith(cpu, instruction, 7, 0b1111);
                 break;
-            case INC: // TODO
+            case INC:
+                execute_simpleArith(cpu, 0, 0b0111);
                 break;
-            case DEC: // TODO
+            case DEC:
+                execute_simpleArith(cpu, 1, 0b0011);
                 break;
             case MUL:
-                execute_complexArith(cpu, instruction, 2);
+                execute_complexArith(cpu, instruction, 2, 0b0111);
                 break;
             case DIV:
-                execute_complexArith(cpu, instruction, 3);
+                execute_complexArith(cpu, instruction, 3, 0b0011);
                 break;
-            case AND: // TODO
+            case AND:
+                execute_complexArith(cpu, instruction, 4, 0b0011);
                 break;
-            case OR: // TODO
+            case OR:
+                execute_complexArith(cpu, instruction, 5, 0b0011);
                 break;
-            case XOR: // TODO
+            case XOR:
+                execute_complexArith(cpu, instruction, 6, 0b0011);
                 break;
-            case NOT: // TODO
+            case NOT:
+                execute_simpleArith(cpu, 4, 0b0011);
                 break;
-            case SHL: // TODO
+            case SHL:
+                execute_simpleArith(cpu, 2, 0b0111);
                 break;
-            case SHR: // TODO
+            case SHR:
+                execute_simpleArith(cpu, 3, 0b0111);
                 break;
-            case JMP: // TODO
+            case JMP:
+                execute_jmp(cpu, instruction, 0);
                 break;
-            case JZ: // TODO
+            case JZ:
+                if (cpu->FR.Z) execute_jmp(cpu, instruction, 0);
                 break;
-            case JNZ: // TODO
+            case JNZ:
+                if (!cpu->FR.Z) execute_jmp(cpu, instruction, 0);
                 break;
-            case JC: // TODO
+            case JC:
+                if (cpu->FR.C) execute_jmp(cpu, instruction, 0);
                 break;
-            case JNC: // TODO
+            case JNC:
+                if (!cpu->FR.C) execute_jmp(cpu, instruction, 0);
                 break;
-            case JO: // TODO
+            case JO:
+                if (cpu->FR.O) execute_jmp(cpu, instruction, 0);
                 break;
-            case JNO: // TODO
+            case JNO:
+                if (!cpu->FR.O) execute_jmp(cpu, instruction, 0);
                 break;
-            case JN: // TODO
+            case JN:
+                if (cpu->FR.N) execute_jmp(cpu, instruction, 0);
                 break;
-            case JNN: // TODO
+            case JNN:
+                if (!cpu->FR.N) execute_jmp(cpu, instruction, 0);
                 break;
-            case CALL: // TODO
+            case CALL:
+                execute_jmp(cpu, instruction, 1);
                 break;
-            case RET: // TODO
+            case RET:
+                // assumes return address is at the top of the stack
+                cpu->PC = read_word(&cpu->memory, cpu->SP);
+                cpu->SP+=2;
                 break;
             case HLT:
                 return;
             case NOP:
                 break;
-            case CLI: // TODO
+            case CLI:
+                cpu->FR.I = 0;
                 break;
-            case STI: // TODO
+            case STI:
+                cpu->FR.I = 1;
                 break;
             case IRET: // TODO
                 break;
