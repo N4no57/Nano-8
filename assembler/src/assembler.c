@@ -148,6 +148,16 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 			strcpy(label, current_token.str_val);
 			consume_token(&tok_idx, &current_token, tokens);
 			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ':') {
+				Symbol s;
+				int symbol_idx = find_symbol(symbol_table, label, &s);
+				if (symbol_idx != -1) {
+					if (s.defined == DEFINED_FALSE) {
+						symbol_table->data[symbol_idx].offset = current_segment->size;
+						symbol_table->data[symbol_idx].defined = DEFINED_TRUE;
+						consume_token(&tok_idx, &current_token, tokens);
+					}
+					continue;
+				}
 				add_symbol(symbol_table, current_segment, label, current_segment->size);
 				if (verbose) printf("Defining symbol: %s = 0x%02x\n", label, (uint32_t)current_segment->size);
 				consume_token(&tok_idx, &current_token, tokens);
