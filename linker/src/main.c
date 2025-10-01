@@ -1,12 +1,15 @@
 #include "../include/objectFileReader.h"
 #include "../include/linker.h"
 #include "../include/linkerFileParser.h"
+#include "../include/flags.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
 
 #define DEFAULT_FILENAME "o.bin"
 #define LINKER_VERSION "1.0.0"
+
+bool configFile = false;
 
 int main(int argc, char **argv) {
     struct MemoryRegion *a = NULL;
@@ -31,22 +34,24 @@ int main(int argc, char **argv) {
 				printf("  --version          Display current version\n");
                 printf("  -h                 Display this help screen\n");
 				printf("  -o <file>          Place the output into <file>\n");
+                printf("  -C <file>.cfg      Specify a linker config file\n");
                 return 0;
             case 'o':
                 output = optarg;
                 break;
             case 'C':
+                configFile = true;
                 parseFile(optarg, a, b);
                 break;
             case 0:
                 if (strcmp(long_options[option_index].name, "version") == 0) {
-					printf("nano8-as.exe (built by Bernardo Oliveira) %s\n", LINKER_VERSION);
+					printf("nano8-ld.exe (built by Bernardo Oliveira) %s\n", LINKER_VERSION);
                 } else {
-                    printf("nano8-as: error: unrecognised command-line option '%s'\n", argv[optind-1]);
+                    printf("nano8-ld: error: unrecognised command-line option '%s'\n", argv[optind-1]);
                     break;
                 }
             default:
-                printf("nano8-as: error: unrecognised command-line option '-%c'\n", option);
+                printf("nano8-ld: error: unrecognised command-line option '-%c'\n", option);
                 break;
         }
     }
