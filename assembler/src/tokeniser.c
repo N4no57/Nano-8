@@ -19,6 +19,7 @@ char *mnemonics[] = {
     "outb",
     "add",
     "sub",
+    "cmp",
     "inc",
     "dec",
     "mul",
@@ -187,7 +188,7 @@ TokenList tokenise(char **lines) {
             // identifier (mnemonic, register, label, directive)
             if (isalpha(line[i]) || line[i] == '.') {
                 char buff[64]; int bi = 0;
-                while (isalnum(line[i]) || line[i] == '.') {
+                while (isalnum(line[i]) || line[i] == '_' || line[i] == '.') {
                     buff[bi++] = line[i++];
                 }
                 buff[bi] = '\0';

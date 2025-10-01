@@ -34,13 +34,13 @@ void add_symbol(SymbolTable *table, AssemblingSegment *seg, const char *label, c
 }
 
 int find_symbol(const SymbolTable *table, const char *label, Symbol *result) {
-    for (size_t i = 0; i < table->count; i++) {
+    for (int i = 0; i < table->count; i++) {
         if (strcmp(table->data[i].label, label) == 0) {
             *result = table->data[i];
-            return 1; // found
+            return i; // token index
         }
     }
-    return 0; // not found
+    return -1; // not found
 }
 
 void free_table(const SymbolTable *table) {

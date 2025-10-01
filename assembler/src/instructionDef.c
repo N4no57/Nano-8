@@ -332,7 +332,7 @@ uint16_t get_size_jc(int operand_count, int expected_operand_count, ParsedOperan
 }
 
 uint16_t get_size_jnc(int operand_count, int expected_operand_count, ParsedOperand operands[]) {
-if (operands[0].kind == ABSOLUTE) {
+    if (operands[0].kind == ABSOLUTE) {
         return 3;
     }
     if (operands[0].kind == INDIRECT_REG) {
@@ -531,7 +531,7 @@ void encode_inb(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
 
     if (operands[0].kind == REGISTER && operands[1].kind == ABSOLUTE) {
         seg->data[seg->size++] = base_opcode;
-        encode_reg_abs(seg->data, &seg->size, operands);
+        encode_reg_imm(seg->data, &seg->size, operands);
     }
 }
 
@@ -540,12 +540,12 @@ void encode_outb(uint8_t base_opcode, int operand_count, AssemblingSegment *seg,
 
     if (operands[0].kind == ABSOLUTE && operands[1].kind == REGISTER) {
         seg->data[seg->size++] = base_opcode;
-        encode_abs_reg(seg->data, &seg->size, operands);
+        encode_imm(seg->data, &seg->size, operands);
+        encode_reg(seg->data, &seg->size, operands+1);
     }
     if (operands[0].kind == ABSOLUTE && operands[1].kind == IMMEDIATE) {
         seg->data[seg->size++] = base_opcode + 0b00000100;
         seg->data[seg->size++] = operands[0].imm & 0xFF;
-        seg->data[seg->size++] = operands[0].imm >> 8 & 0xFF;
         seg->data[seg->size++] = operands[1].imm & 0xFF;
     }
 }
