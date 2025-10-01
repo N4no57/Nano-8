@@ -102,7 +102,25 @@ void append_segmentMapEntry(const struct SegmentMapEntry entry, const uint32_t o
     segmentMap[obj_idx][local_segment_idx] = entry;
 }
 
-void linker(const struct ObjectFile *objs, const size_t num_files, char *out) {
+int find_MemoryRegion(const struct MemoryRegion *mem, const char *name) {
+    for (int i = 0; i < memRegion_count; i++) {
+        if (strcmp(name, mem[i].name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int find_SegmentRule(const struct SegmentRule *rules, const char *name) {
+    for (int i = 0; i < segRule_count; i++) {
+        if (strcmp(name, rules[i].name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void linker(const struct ObjectFile *objs, const size_t num_files, char *out, struct MemoryRegion *mem, struct SegmentRule *rules) {
     linkedSegments = malloc(sizeof(struct LinkedSegment) * segment_table_capacity);
     if (!linkedSegments) {
         perror("malloc");
@@ -131,22 +149,28 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out) {
         uint32_t data_offset = 0;
         for (int j = 0; j < objs[i].header.segmentTable.numSegments; j++) {
             char *segName = objs[i].header.segmentTable.entries[j].name;
-            int seg_idx = find_segment(segName);
+            const struct MemoryRegion *region = NULL;
+            if (configFile) {
+                const int segRule_idx = find_SegmentRule(rules, segName);
+                region = &mem[find_MemoryRegion(mem, rules[segRule_idx].load_to)];
+            }
+            const int seg_idx = find_segment(segName);
             if (seg_idx != -1) {
-                uint8_t *data = objs[i].Data + data_offset;
+                const uint8_t *data = objs[i].Data + data_offset + linkedSegments[seg_idx].data_offset;
                 offset_adjust[j] = linkedSegments[seg_idx].size;
                 append_segment_data(data, objs[i].header.segmentTable.entries[j].size, seg_idx);
                 update_segment_base_addresses();
             } else {
                 struct LinkedSegment seg;
                 seg.size = objs[i].header.segmentTable.entries[j].size;
-                seg.data_cap = seg.size;
+                seg.data_cap = configFile == 0 ? seg.size : region->size;
+                seg.data_offset = configFile == 0 ? 0 : region->start;
                 seg.data = malloc(seg.data_cap);
                 if (!seg.data) {
                     perror("malloc");
                     exit(EXIT_FAILURE);
                 }
-                memcpy(seg.data, objs[i].Data + data_offset, seg.size);
+                memcpy(seg.data, objs[i].Data + data_offset + seg.data_offset, seg.size);
                 strcpy(seg.name, segName);
                 seg.base_address = 0x0000;
                 append_segment(seg);

@@ -20,6 +20,9 @@ struct SegmentRule {
     uint32_t explicit_start; // 0 if none
 };
 
+extern int memRegion_count;
+extern int segRule_count;
+
 void parseFile(char *fileName, struct MemoryRegion *memRegions, struct SegmentRule *rules);
 
 #endif //LINKERFILEPARSER_H
