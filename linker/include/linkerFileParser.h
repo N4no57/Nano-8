@@ -12,6 +12,7 @@ struct MemoryRegion {
     uint32_t start;
     uint32_t size;
     int fill;
+    uint32_t current_offset;
 };
 
 struct SegmentRule {
@@ -23,6 +24,6 @@ struct SegmentRule {
 extern int memRegion_count;
 extern int segRule_count;
 
-void parseFile(char *fileName, struct MemoryRegion *memRegions, struct SegmentRule *rules);
+void parseFile(char *fileName, struct MemoryRegion **memRegions, struct SegmentRule **rules);
 
 #endif //LINKERFILEPARSER_H

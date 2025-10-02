@@ -204,6 +204,7 @@ void push_memRegion(struct MemoryRegion **memRegions, char name[16], struct KeyV
     (*memRegions)[memRegion_count].size = 0xFFFFFFFF;
     (*memRegions)[memRegion_count].start = 0xFFFFFFFF;
     (*memRegions)[memRegion_count].fill = 0;
+    (*memRegions)[memRegion_count].current_offset = 0;
 
     for (int i = 0; i < keyValueCount; i++) {
         if (strcmp(pairs[i].key, "start") == 0 && pairs[i].type == VAL_NUMBER) {
@@ -297,7 +298,7 @@ void parseKeyValue(struct KeyValue *pairs, char *key) {
     } else if (current_token.type == TOKEN_STRING) {
         push_KeyValue(&pairs, key, VAL_STRING, current_token.str_val, 0);
     } else if (current_token.type == TOKEN_IDENTIFIER) {
-        push_KeyValue(&pairs, key, VAL_NUMBER, current_token.str_val, 0);
+        push_KeyValue(&pairs, key, VAL_IDENT, current_token.str_val, 0);
     }
     consume_token();
 }
@@ -437,6 +438,8 @@ void parseSegRule(struct SegmentRule *segRules) {
 
     push_segRule(&segRules, buff, pairs);
     free(pairs);
+    keyValueCount = 0;
+    keyValueCapacity = 8;
 }
 
 void parseBlock(struct MemoryRegion *memRegions, struct SegmentRule *rules) {
@@ -477,21 +480,21 @@ void parseBlock(struct MemoryRegion *memRegions, struct SegmentRule *rules) {
     }
 }
 
-void parseFile(char *fileName, struct MemoryRegion *memRegions, struct SegmentRule *rules) {
+void parseFile(char *fileName, struct MemoryRegion **memRegions, struct SegmentRule **rules) {
     tokens = malloc(token_capacity * sizeof(Token));
     if (!tokens) {
         perror("malloc");
         exit(EXIT_FAILURE);
     }
 
-    memRegions = malloc(memRegion_capacity * sizeof(struct MemoryRegion));
-    if (!memRegions) {
+    *memRegions = malloc(memRegion_capacity * sizeof(struct MemoryRegion));
+    if (!(*memRegions)) {
         perror("malloc");
         exit(EXIT_FAILURE);
     }
 
-    rules = malloc(segRule_capacity * sizeof(struct SegmentRule));
-    if (!rules) {
+    *rules = malloc(segRule_capacity * sizeof(struct SegmentRule));
+    if (!(*rules)) {
         perror("malloc");
         exit(EXIT_FAILURE);
     }
@@ -512,7 +515,7 @@ void parseFile(char *fileName, struct MemoryRegion *memRegions, struct SegmentRu
     current_token = tokens[0];
 
     while (tokens[token_idx].type != TOKEN_EOF) {
-        parseBlock(memRegions, rules);
+        parseBlock(*memRegions, *rules);
     }
 
     free(tokens);
