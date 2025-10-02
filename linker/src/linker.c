@@ -268,6 +268,7 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
             }
 
             uint8_t buffer[region->size];
+            memset(buffer, 0, region->size);
 
             for (int s = 0; s < segment_table_count; s++) {
                 struct LinkedSegment *seg = &linkedSegments[s];
