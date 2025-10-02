@@ -166,7 +166,16 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 					}
 					const_table->entries = tmp;
 				}
+				if (current_token.type != TOKEN_NUMBER) {
+					printf("You fucked up a constant");
+					exit(1);
+				}
 
+				strcpy(const_table->entries[const_table->numConsts].name, label);
+				const_table->entries[const_table->numConsts].value = current_token.int_value;
+
+				const_table->numConsts++;
+				consume_token(&tok_idx, &current_token, tokens);
 				continue;
 			}
 			printf("Invalid Label usage");
@@ -254,7 +263,7 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 
 			while (operand_count < inst->operand_count) {
 				operands[operand_count++] = operand_parser(tokens, symbol_table, &tok_idx, &current_token, NULL,
-					segment_table, *current_segment, mnemonic);
+					segment_table, *current_segment, mnemonic, const_table);
 				if (matches(current_token, TOKEN_SYMBOL, ",", 0)) consume_token(&tok_idx, &current_token, tokens);
 				if (current_token.type == TOKEN_EOF) break;
 				if (operand_count >= 32) {
@@ -297,7 +306,8 @@ void correct_reloc_offset(const struct RelocationTable *reloc_table, const int o
 	}
 }
 
-void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSegmentTable *segment_table, struct RelocationTable *reloc_table) {
+void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSegmentTable *segment_table,
+	struct RelocationTable *reloc_table, struct ConstTable *const_table) {
 	if (verbose) printf("Pass 2: Encoding instructions\n");
 	int tok_idx = 0;
 
@@ -313,6 +323,11 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 		if (current_token.type == TOKEN_LABEL) {
 			consume_token(&tok_idx, &current_token, tokens);
 			if (matches(current_token, TOKEN_SYMBOL, ":", 0)) {
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
+			if (matches(current_token, TOKEN_SYMBOL, "=", 0)) {
+				consume_token(&tok_idx, &current_token, tokens);
 				consume_token(&tok_idx, &current_token, tokens);
 				continue;
 			}
@@ -457,7 +472,7 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 
 			while (operand_count < inst->operand_count) {
 				operands[operand_count++] = operand_parser(tokens, table, &tok_idx, &current_token, reloc_table,
-					segment_table, *current_segment, mnemonic);
+					segment_table, *current_segment, mnemonic, const_table);
 				if (operands[operand_count-1].imm == 0x7FFFFFFF) correct_reloc_offset(reloc_table, operand_count);
 				if (matches(current_token, TOKEN_SYMBOL, ",", 0)) consume_token(&tok_idx, &current_token, tokens);
 				if (current_token.type == TOKEN_EOF) break;
@@ -533,7 +548,7 @@ int assemble(const char *input, const char *output) {
 
 	first_pass(&tokens, &symbol_table, &segmentTable, &consts);
 
-	second_pass(&tokens, &symbol_table, &segmentTable, &relocationTable);
+	second_pass(&tokens, &symbol_table, &segmentTable, &relocationTable, &consts);
 
 	const struct ObjectFile obj = generateFileStruct(&symbol_table, &segmentTable, &relocationTable);
 	if (objDump) dumpObjectFile(&obj);

@@ -35,6 +35,7 @@ int is_base_mod(Token t);
 
 // parses tokens until it reaches a "," then returns the parsed operand
 ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok,
-    struct RelocationTable *reloc_table, const AssemblingSegmentTable *segTable, AssemblingSegment current_seg, Token mnemonic);
+    struct RelocationTable *reloc_table, const AssemblingSegmentTable *segTable, AssemblingSegment current_seg, Token mnemonic,
+    const struct ConstTable *constTable);
 
 #endif //UTILS_H

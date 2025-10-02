@@ -122,10 +122,23 @@ int isregister(const char *s) {
     return 0;
 }
 
+int ishexdigit(const char s) {
+    if (isdigit(s)) {
+        return 1;
+    }
+    if (s >= 'A' && s <= 'F') {
+        return 1;
+    }
+    if (s >= 'a' && s <= 'f') {
+        return 1;
+    }
+    return 0;
+}
+
 void parse_number(TokenList *token_list, const char *line, int *i, int base) {
     char buff[64]; int bi = 0;
-    if (isalnum(line[*i])) {
-        while (isalnum(line[*i])) {
+    if (ishexdigit(line[*i])) {
+        while (ishexdigit(line[*i])) {
             buff[bi++] = line[(*i)++];
         }
         buff[bi] = '\0';
@@ -164,18 +177,33 @@ TokenList tokenise(char **lines) {
                 continue;
             }
 
-            // number, immediate
-            if (line[i] == '#' || line[i] == '$' || line[i] == '%') {
+            if (line[i] == '#') {
+                const Token t = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
+                token_list_push(&token_list, t);
+                i++;
+
+                if (line[i] == '$' || line[i] == '%') {
+                    parse_number(&token_list, &line[i], &i, get_base(line[i]));
+                } else if (isdigit(line[i])) {
+                    parse_number(&token_list, &line[i], &i, 10);
+                } else if (isalpha(line[i])) {
+                    size_t start = i;
+                    while (isalnum(line[i]) || line[i] == '_') i++;
+                    const Token t_sym = { .type = TOKEN_LABEL, .str_val = strndup(&line[start], i-start) };
+                    token_list_push(&token_list, t_sym);
+                } else {
+                    printf("I am not gonna do that\n");
+                    printf("it is disgusting\ngoodbye cruel world\n");
+                    exit(1);
+                }
+            }
+
+            // number, base mod
+            if (line[i] == '$' || line[i] == '%') {
                 const Token t1 = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
                 token_list_push(&token_list, t1);
-                int base = get_base(line[i]);
+                const int base = get_base(line[i]);
                 i++;
-                if (line[i] == '$' || line[i] == '%') { // "#" token most likely proceeded by these
-                    base = get_base(line[i]);
-                    const Token t2 = { .type = TOKEN_SYMBOL, .str_val = strndup(&line[i], 1) };
-                    token_list_push(&token_list, t2);
-                    i++;
-                } // if not continue to number
                 parse_number(&token_list, line, &i, base);
                 continue;
             }

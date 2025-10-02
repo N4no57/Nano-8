@@ -106,11 +106,81 @@ ParsedOperand get_reg_pair(const TokenList *tokens, SymbolTable *symbol_table, i
     return result;
 }
 
+int find_constSymbol(const struct ConstTable *constTable, const char *name, struct ConstSymbol *symbol) {
+    for (int i = 0; i < constTable->numConsts; i++) {
+        if (strcmp(constTable->entries[i].name, name) == 0) {
+            *symbol = constTable->entries[i];
+            return i;
+        }
+    }
+    return -1;
+}
+
+ParsedOperand parseLabel(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok,
+    struct RelocationTable *reloc_table, const AssemblingSegmentTable *segTable,
+    AssemblingSegment current_seg, const Token mnemonic, const struct ConstTable *constTable) {
+    ParsedOperand result = {0, {0}};
+
+    const char *label = current_tok->str_val;
+
+    // check const table first
+    struct ConstSymbol cs;
+    if (find_constSymbol(constTable, label, &cs) >= 0) {
+        consume_token(tok_idx, current_tok, tokens);
+        result.imm = cs.value;
+        result.kind = ABSOLUTE;
+        return result;
+    }
+
+    // fallback on symbol table
+    Symbol s;
+    if (find_symbol(symbol_table, label, &s) == -1 && isPassTwo == true) {
+        add_symbol(symbol_table, &current_seg, current_tok->str_val, current_seg.size);
+        symbol_table->data[symbol_table->count-1].defined = DEFINED_FALSE;
+    }
+    consume_token(tok_idx, current_tok, tokens);
+    int16_t addend = 0;
+    if (current_tok->type == TOKEN_SYMBOL
+        && current_tok->str_val[0] == '+' || current_tok->str_val[0] == '-') {
+        char sign = current_tok->str_val[0];
+        consume_token(tok_idx, current_tok, tokens);
+        if (current_tok->type == TOKEN_NUMBER) {
+            addend = (int16_t)current_tok->int_value;
+            if (sign == '-') addend *= -1;
+        }
+    }
+
+    uint8_t type = RELOC_ABSOLUTE;
+    if (strcmp(mnemonic.str_val, "call") == 0 || strcmp(mnemonic.str_val, "jmp") == 0) {
+        int32_t offset = (int32_t)(s.offset - (current_seg.size+1));
+        const uint32_t current_seg_idx = get_segment_index(segTable, &current_seg);
+        const uint32_t symbol_seg_idx = get_segment_index(segTable, s.segment);
+        if (current_seg_idx == symbol_seg_idx) {
+            if (offset < -128 || offset > 127) {
+                type = RELOC_ABSOLUTE;
+            } else {
+                type = RELOC_RELATIVE;
+            }
+        } else {
+            type = RELOC_RELAX;
+        }
+    }
+    if (reloc_table) relocationTableAppend(reloc_table, s.label,
+        get_segment_index(segTable, &current_seg),
+        current_seg.size, addend, type);
+    result.kind = type < RELOC_RELAX ? type+3 : 3;
+    // serves as both flag that relocationEntry has been appended to relocation table
+    // and placeholder for the object file
+    result.imm = 0x7FFFFFFF;
+
+    return result;
+}
+
 // parses tokens until it reaches a "," then returns the parsed operand
 // reloc table is optional
 ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok,
     struct RelocationTable *reloc_table, const AssemblingSegmentTable *segTable,
-    AssemblingSegment current_seg, const Token mnemonic) {
+    const AssemblingSegment current_seg, const Token mnemonic, const struct ConstTable *constTable) {
     ParsedOperand operand = {0, {0}};
 
     while (current_tok->type != TOKEN_EOF && current_tok->type != TOKEN_MNEMONIC &&
@@ -119,46 +189,8 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
         // e.g. R0 -> enum REGISTER, #1023 -> enum IMMEDIATE and so on
         switch (current_tok->type) {
             case TOKEN_LABEL:
-                Symbol s;
-                if (find_symbol(symbol_table, current_tok->str_val, &s) == -1 && isPassTwo == true) {
-                    add_symbol(symbol_table, &current_seg, current_tok->str_val, current_seg.size);
-                    symbol_table->data[symbol_table->count-1].defined = DEFINED_FALSE;
-                }
-                consume_token(tok_idx, current_tok, tokens);
-                int16_t addend = 0;
-                if (current_tok->type == TOKEN_SYMBOL
-                    && current_tok->str_val[0] == '+' || current_tok->str_val[0] == '-') {
-                    char sign = current_tok->str_val[0];
-                    consume_token(tok_idx, current_tok, tokens);
-                    if (current_tok->type == TOKEN_NUMBER) {
-                        addend = (int16_t)current_tok->int_value;
-                        if (sign == '-') addend *= -1;
-                    }
-                }
-
-                uint8_t type = RELOC_ABSOLUTE;
-                if (strcmp(mnemonic.str_val, "call") == 0 || strcmp(mnemonic.str_val, "jmp") == 0) {
-                    int32_t offset = (int32_t)(s.offset - (current_seg.size+1));
-                    const uint32_t current_seg_idx = get_segment_index(segTable, &current_seg);
-                    const uint32_t symbol_seg_idx = get_segment_index(segTable, s.segment);
-                    if (current_seg_idx == symbol_seg_idx) {
-                        if (offset < -128 || offset > 127) {
-                            type = RELOC_ABSOLUTE;
-                        } else {
-                            type = RELOC_RELATIVE;
-                        }
-                    } else {
-                        type = RELOC_RELAX;
-                    }
-                }
-                if (reloc_table) relocationTableAppend(reloc_table, s.label,
-                    get_segment_index(segTable, &current_seg),
-                    current_seg.size, addend, type);
-                operand.kind = type < RELOC_RELAX ? type+3 : 3;
-                // serves as both flag that relocationEntry has been appended to relocation table
-                // and placeholder for the object file
-                operand.imm = 0x7FFFFFFF;
-                return operand;
+                return parseLabel(tokens, symbol_table, tok_idx, current_tok,
+                    reloc_table, segTable, current_seg, mnemonic, constTable);
 
             // most verbose case. needs careful handling.
             case TOKEN_SYMBOL:
@@ -228,6 +260,19 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                     // may be succeeded by base modifier
                     operand.kind = IMMEDIATE;
                     consume_token(tok_idx, current_tok, tokens);
+
+                    // constant symbol
+                    if (current_tok->type == TOKEN_LABEL) {
+                        struct ConstSymbol cs;
+                        if (find_constSymbol(constTable, current_tok->str_val, &cs) == -1) {
+                            fprintf(stderr, "Invalid token\n");
+                            exit(1);
+                        }
+                        consume_token(tok_idx, current_tok, tokens);
+                        operand.imm = cs.value;
+                        return operand;
+                    }
+
                     if (is_base_mod(*current_tok)) {
                         consume_token(tok_idx, current_tok, tokens);
                     }
