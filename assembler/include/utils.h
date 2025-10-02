@@ -22,8 +22,8 @@ typedef struct {
     };
 } ParsedOperand;
 
-void RelocationTableAppend(struct RelocationTable *relocTable, const char *name,
-                           uint16_t segment_index, uint16_t segment_offset, uint8_t type);
+void relocationTableAppend(struct RelocationTable *relocTable, const char *name,
+    const uint16_t segment_index, const uint16_t segment_offset, const int16_t addend, const uint8_t type);
 
 int get_reg(const char *s);
 
