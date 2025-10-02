@@ -9,4 +9,6 @@ add_executable(emulator src/main.c
         include/flags.h
         src/memory.c
         include/memory.h
+        src/emulatorTests.c
+        include/emulatorTests.h
 )
