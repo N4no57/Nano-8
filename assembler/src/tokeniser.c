@@ -219,8 +219,15 @@ TokenList tokenise(char **lines) {
 }
 
 int matches(const Token tok, const TokenType type, const char *str, const int int_val) {
-    if (tok.type == TOKEN_NUMBER && tok.int_value == int_val) {
-        return 1;
+    if (tok.type == TOKEN_EOF) {
+        if (tok.type == type) {
+            return 1;
+        }
+    }
+    if (tok.type == TOKEN_NUMBER) {
+        if (tok.type == type && tok.int_value == int_val) {
+            return 1;
+        }
     }
     if (type == tok.type) {
         if (strcmp(tok.str_val, str) == 0) {

@@ -143,19 +143,19 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 	AssemblingSegment *current_segment = 0;
 	find_segment(segment_table, &current_segment, "code");
 
-	while (current_token.type != TOKEN_EOF) {
+	while (!matches(current_token, TOKEN_EOF, "\0", 0)) {
 		if (current_token.type == TOKEN_LABEL) {
 			// locally store string and consume token
 			char label[strlen(current_token.str_val) + 1];
 			strcpy(label, current_token.str_val);
 			consume_token(&tok_idx, &current_token, tokens);
-			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ':') {
+			if (matches(current_token, TOKEN_SYMBOL, ":", 0)) {
 				add_symbol(symbol_table, current_segment, label, current_segment->size);
 				if (verbose) printf("Defining symbol: %s = 0x%02x\n", label, (uint32_t)current_segment->size);
 				consume_token(&tok_idx, &current_token, tokens);
 				continue;
 			}
-			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == '=') {
+			if (matches(current_token, TOKEN_SYMBOL, "=", 0)) {
 				consume_token(&tok_idx, &current_token, tokens);
 				if (const_table->numConsts >= const_table->capacity) {
 					const_table->capacity *= 2;
@@ -166,7 +166,7 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 					}
 					const_table->entries = tmp;
 				}
-				
+
 				continue;
 			}
 			printf("Invalid Label usage");
@@ -255,7 +255,7 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 			while (operand_count < inst->operand_count) {
 				operands[operand_count++] = operand_parser(tokens, symbol_table, &tok_idx, &current_token, NULL,
 					segment_table, *current_segment, mnemonic);
-				if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ',') consume_token(&tok_idx, &current_token, tokens);
+				if (matches(current_token, TOKEN_SYMBOL, ",", 0)) consume_token(&tok_idx, &current_token, tokens);
 				if (current_token.type == TOKEN_EOF) break;
 				if (operand_count >= 32) {
 					fprintf(stderr, "Too many operands\n");
@@ -309,10 +309,10 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 	Token current_token;
 	consume_token(&tok_idx, &current_token, tokens);
 
-	while (current_token.type != TOKEN_EOF) {
+	while (!matches(current_token, TOKEN_EOF, "\0", 0)) {
 		if (current_token.type == TOKEN_LABEL) {
 			consume_token(&tok_idx, &current_token, tokens);
-			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ':') {
+			if (matches(current_token, TOKEN_SYMBOL, ":", 0)) {
 				consume_token(&tok_idx, &current_token, tokens);
 				continue;
 			}
@@ -459,7 +459,7 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 				operands[operand_count++] = operand_parser(tokens, table, &tok_idx, &current_token, reloc_table,
 					segment_table, *current_segment, mnemonic);
 				if (operands[operand_count-1].imm == 0x7FFFFFFF) correct_reloc_offset(reloc_table, operand_count);
-				if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == ',') consume_token(&tok_idx, &current_token, tokens);
+				if (matches(current_token, TOKEN_SYMBOL, ",", 0)) consume_token(&tok_idx, &current_token, tokens);
 				if (current_token.type == TOKEN_EOF) break;
 				if (operand_count >= 3) {
 					fprintf(stderr, "Too many operands\n");
@@ -531,7 +531,7 @@ int assemble(const char *input, const char *output) {
 		goto reloc_free;
 	}
 
-	first_pass(&tokens, &symbol_table, &segmentTable);
+	first_pass(&tokens, &symbol_table, &segmentTable, &consts);
 
 	second_pass(&tokens, &symbol_table, &segmentTable, &relocationTable);
 
