@@ -134,7 +134,7 @@ void includeFile(const char *fileName, TokenList *tokenList, const int pos) {
 	tokenList->count += newTokens.count-1;
 }
 
-void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentTable *segment_table) {
+void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentTable *segment_table, struct ConstTable *const_table) {
 	if (verbose) printf("First pass: Collecting Symbols\n");
 	int tok_idx = 0;
 	Token current_token;
@@ -153,6 +153,20 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 				add_symbol(symbol_table, current_segment, label, current_segment->size);
 				if (verbose) printf("Defining symbol: %s = 0x%02x\n", label, (uint32_t)current_segment->size);
 				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
+			if (current_token.type == TOKEN_SYMBOL && current_token.str_val[0] == '=') {
+				consume_token(&tok_idx, &current_token, tokens);
+				if (const_table->numConsts >= const_table->capacity) {
+					const_table->capacity *= 2;
+					struct ConstSymbol *tmp = realloc(const_table->entries, const_table->capacity * sizeof(struct ConstSymbol));
+					if (!tmp) {
+						perror("Memory allocation error");
+						exit(1);
+					}
+					const_table->entries = tmp;
+				}
+				
 				continue;
 			}
 			printf("Invalid Label usage");
@@ -507,6 +521,16 @@ int assemble(const char *input, const char *output) {
 
 	TokenList tokens = tokenise(lines);
 
+	struct ConstTable consts;
+	consts.capacity = 8;
+	consts.numConsts = 0;
+	consts.entries = malloc(consts.capacity * sizeof(struct ConstSymbol));
+	if (!consts.entries) {
+		perror("malloc");
+		retval = 1;
+		goto reloc_free;
+	}
+
 	first_pass(&tokens, &symbol_table, &segmentTable);
 
 	second_pass(&tokens, &symbol_table, &segmentTable, &relocationTable);
@@ -520,6 +544,8 @@ int assemble(const char *input, const char *output) {
 		freeObjectFile(&obj);
 	tokens_free:
 		freeTokenList(&tokens);
+	const_free:
+		free(consts.entries);
 	reloc_free:
 		free(relocationTable.relocations);
 	segment_free:
