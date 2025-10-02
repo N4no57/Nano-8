@@ -32,6 +32,17 @@ struct Header {
     struct SegmentTable segmentTable;
 };
 
+struct ConstSymbol {
+    char name[16];
+    uint32_t value;
+};
+
+struct ConstTable {
+    uint16_t numConsts;
+    uint16_t capacity;
+    struct ConstSymbol *entries;
+};
+
 struct ObjSymbol {
     char name[16];
     uint16_t segment_index;
