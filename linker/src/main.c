@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
                 break;
             case 'C':
                 configFile = true;
-                parseFile(optarg, a, b);
+                parseFile(optarg, &a, &b);
                 break;
             case 0:
                 if (strcmp(long_options[option_index].name, "version") == 0) {
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
     const struct ObjectFile obj = readObjectFile("test.o");
     dumpObjectFile(&obj);
 
-    linker(&obj, 1, output);
+    linker(&obj, 1, output, a, b);
 
     return 0;
 }
