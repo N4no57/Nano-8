@@ -71,10 +71,16 @@ void printToken(const Token tok) {
         printf("%s: %ld\n", type, tok.int_val);
         return;
     }
-    printf("%s: %s", type, tok.str_val);
+    printf("%s: %s\n", type, tok.str_val);
 }
 
-int matches(const enum TokenType type, char str_val[32], const long int_val) {
+void tokenDump() {
+    for (int i = 0; i < token_count; i++) {
+        printToken(tokens[i]);
+    }
+}
+
+int matches(const enum TokenType type, char *str_val, const long int_val) {
     if (type == TOKEN_NUMBER && current_token.type == TOKEN_NUMBER) {
         return current_token.int_val == int_val;
     }
@@ -121,7 +127,7 @@ int ishexdigit(char c) {
 void tokenise(const char *input) {
     int i = 0;
 
-    while (input[i]) {
+    while (input[i] != '\0') {
         if (isspace(input[i])) {
             i++;
         }
@@ -331,7 +337,7 @@ void parseMemRegion(struct MemoryRegion *memRegions) {
     strcpy(buff, current_token.str_val);
     consume_token();
 
-    if (!matches(TOKEN_SYMBOL, ":",0)) {
+    if (!matches(TOKEN_SYMBOL, ":\0",0)) {
         printf("Error: Expected \":\"\n");
         printf("got: ");
         printToken(current_token);
@@ -348,7 +354,7 @@ void parseMemRegion(struct MemoryRegion *memRegions) {
     strcpy(key, current_token.str_val);
     consume_token();
 
-    if (!matches(TOKEN_SYMBOL, "=",0)) {
+    if (!matches(TOKEN_SYMBOL, "=\0",0)) {
         printf("Error: Expected \"=\"\n");
         printf("got: ");
         printToken(current_token);
@@ -358,7 +364,7 @@ void parseMemRegion(struct MemoryRegion *memRegions) {
 
     parseKeyValue(pairs, key);
 
-    while (!matches(TOKEN_SYMBOL, ";", 0)) {
+    while (!matches(TOKEN_SYMBOL, ";\0", 0)) {
         if (current_token.type != TOKEN_IDENTIFIER) {
             printf("Error: Expected identifier\n");
             printf("got: ");
@@ -368,7 +374,7 @@ void parseMemRegion(struct MemoryRegion *memRegions) {
         strcpy(key, current_token.str_val);
         consume_token();
 
-        if (!matches(TOKEN_SYMBOL, "=",0)) {
+        if (!matches(TOKEN_SYMBOL, "=\0",0)) {
             printf("Error: Expected \"=\"\n");
             printf("got: ");
             printToken(current_token);
@@ -400,7 +406,7 @@ void parseSegRule(struct SegmentRule *segRules) {
     strcpy(buff, current_token.str_val);
     consume_token();
 
-    if (!matches(TOKEN_SYMBOL, ":",0)) {
+    if (!matches(TOKEN_SYMBOL, ":\0",0)) {
         printf("Error: Expected \":\"\n");
         printf("got: ");
         printToken(current_token);
@@ -417,7 +423,7 @@ void parseSegRule(struct SegmentRule *segRules) {
     strcpy(key, current_token.str_val);
     consume_token();
 
-    if (!matches(TOKEN_SYMBOL, "=",0)) {
+    if (!matches(TOKEN_SYMBOL, "=\0",0)) {
         printf("Error: Expected \"=\"\n");
         printf("got: ");
         printToken(current_token);
@@ -427,7 +433,7 @@ void parseSegRule(struct SegmentRule *segRules) {
 
     parseKeyValue(pairs, key);
 
-    while (!matches(TOKEN_SYMBOL, ";", 0)) {
+    while (!matches(TOKEN_SYMBOL, ";\0", 0)) {
         if (current_token.type != TOKEN_IDENTIFIER) {
             printf("Error: Expected identifier\n");
             printf("got: ");
@@ -437,7 +443,7 @@ void parseSegRule(struct SegmentRule *segRules) {
         strcpy(key, current_token.str_val);
         consume_token();
 
-        if (!matches(TOKEN_SYMBOL, "=",0)) {
+        if (!matches(TOKEN_SYMBOL, "=\0",0)) {
             printf("Error: Expected \"=\"\n");
             printf("got: ");
             printToken(current_token);
@@ -459,29 +465,29 @@ void parseBlock(struct MemoryRegion *memRegions, struct SegmentRule *rules) {
     // MEMORY "{" [ entry ] "}"
     // SEGMENTS "{" [ entry ] "}"
 
-    if (matches(TOKEN_IDENTIFIER, "MEMORY", 0)) {
+    if (matches(TOKEN_IDENTIFIER, "MEMORY\0", 0)) {
         consume_token();
-        if (!matches(TOKEN_SYMBOL, "{", 0)) {
+        if (!matches(TOKEN_SYMBOL, "{\0", 0)) {
             printf("Error: Expected \"{\"\n");
             printf("got: ");
             printToken(current_token);
             exit(EXIT_FAILURE);
         }
         consume_token();
-        while (!matches(TOKEN_SYMBOL, "}", 0)) {
+        while (!matches(TOKEN_SYMBOL, "}\0", 0)) {
             parseMemRegion(memRegions);
         }
         consume_token();
-    } else if (matches(TOKEN_IDENTIFIER, "SEGMENTS", 0)) {
+    } else if (matches(TOKEN_IDENTIFIER, "SEGMENTS\0", 0)) {
         consume_token();
-        if (!matches(TOKEN_SYMBOL, "{", 0)) {
+        if (!matches(TOKEN_SYMBOL, "{\0", 0)) {
             printf("Error: Expected \"{\n");
             printf("got: ");
             printToken(current_token);
             exit(EXIT_FAILURE);
         }
         consume_token();
-        while (!matches(TOKEN_SYMBOL, "}", 0)) {
+        while (!matches(TOKEN_SYMBOL, "}\0", 0)) {
             parseSegRule(rules);
         }
         consume_token();
@@ -489,6 +495,7 @@ void parseBlock(struct MemoryRegion *memRegions, struct SegmentRule *rules) {
         printf("Error: Expected either \"MEMORY\" or \"SEGMENTS\" config blocks\n");
         printf("got: ");
         printToken(current_token);
+        tokenDump();
         exit(EXIT_FAILURE);
     }
 }
@@ -518,9 +525,8 @@ void parseFile(char *fileName, struct MemoryRegion **memRegions, struct SegmentR
         exit(EXIT_FAILURE);
     }
 
-    char file_buff[2048];
+    char file_buff[2048] = {0};
     fread(file_buff, 1, sizeof(file_buff), file);
-    file_buff[ftell(file)] = '\0';
     fclose(file);
 
     tokenise(file_buff);
