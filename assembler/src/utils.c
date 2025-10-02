@@ -82,7 +82,6 @@ int is_base_mod(Token t) {
 ParsedOperand get_reg_pair(const TokenList *tokens, SymbolTable *symbol_table, int *tok_idx, Token *current_tok) {
     ParsedOperand result = {0, {0}};
 
-    consume_token(tok_idx, current_tok, tokens); // consume "("
     if (current_tok->type == TOKEN_REGISTER) { // expect another reg after a ","
         result.kind = INDIRECT_REG;
         int reg = 0;

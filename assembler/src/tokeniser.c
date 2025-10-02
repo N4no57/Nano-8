@@ -100,7 +100,12 @@ void token_list_push(TokenList *token_list, Token T) {
         }
         token_list->data = tmp;
     }
-    token_list->data[token_list->count] = T;
+    token_list->data[token_list->count].type = T.type;
+    if (T.type == TOKEN_NUMBER) {
+        token_list->data[token_list->count].int_value = T.int_value;
+    } else {
+        token_list->data[token_list->count].str_val = strdup(T.str_val);
+    }
     token_list->count++;
 }
 
@@ -137,13 +142,13 @@ int ishexdigit(const char s) {
 
 void parse_number(TokenList *token_list, const char *line, int *i, int base) {
     char buff[64]; int bi = 0;
-    if (ishexdigit(line[*i])) {
-        while (ishexdigit(line[*i])) {
+    if (ishexdigit(line[(*i)])) {
+        while (ishexdigit(line[(*i)])) {
             buff[bi++] = line[(*i)++];
         }
         buff[bi] = '\0';
     }
-    const Token t = { .type = TOKEN_NUMBER, .int_value =  strtol(buff, NULL, base) };
+    const Token t = { .type = TOKEN_NUMBER, .int_value = strtol(buff, NULL, base) };
     token_list_push(token_list, t);
 }
 
@@ -183,9 +188,10 @@ TokenList tokenise(char **lines) {
                 i++;
 
                 if (line[i] == '$' || line[i] == '%') {
-                    parse_number(&token_list, &line[i], &i, get_base(line[i]));
+                    i++;
+                    parse_number(&token_list, line, &i, get_base(line[i]));
                 } else if (isdigit(line[i])) {
-                    parse_number(&token_list, &line[i], &i, 10);
+                    parse_number(&token_list, line, &i, 10);
                 } else if (isalpha(line[i])) {
                     size_t start = i;
                     while (isalnum(line[i]) || line[i] == '_') i++;
@@ -196,6 +202,7 @@ TokenList tokenise(char **lines) {
                     printf("it is disgusting\ngoodbye cruel world\n");
                     exit(1);
                 }
+                continue;
             }
 
             // number, base mod
