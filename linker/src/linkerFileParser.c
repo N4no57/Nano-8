@@ -105,6 +105,19 @@ int get_base(const char c) {
     return 10;
 }
 
+int ishexdigit(char c) {
+    if (c >= 'a' && c <= 'f') {
+        return 1;
+    }
+    if (c >= 'A' && c <= 'F') {
+        return 1;
+    }
+    if (isdigit(c)) {
+        return 1;
+    }
+    return 0;
+}
+
 void tokenise(const char *input) {
     int i = 0;
 
@@ -148,7 +161,7 @@ void tokenise(const char *input) {
                 i++;
             }
             char buff[32]; int bi = 0;
-            while (isdigit(input[i])) {
+            while (ishexdigit(input[i])) {
                 buff[bi++] = input[i++];
             }
             buff[bi] = '\0';
