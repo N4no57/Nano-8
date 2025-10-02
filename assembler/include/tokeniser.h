@@ -39,4 +39,6 @@ void freeTokenList(const TokenList *token_list);
 
 TokenList tokenise(char **lines);
 
+int matches(Token tok, TokenType type, const char *str, int int_val);
+
 #endif //TOKENISER_H

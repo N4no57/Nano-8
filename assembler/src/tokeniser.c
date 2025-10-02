@@ -217,3 +217,15 @@ TokenList tokenise(char **lines) {
 
     return token_list;
 }
+
+int matches(const Token tok, const TokenType type, const char *str, const int int_val) {
+    if (tok.type == TOKEN_NUMBER && tok.int_value == int_val) {
+        return 1;
+    }
+    if (type == tok.type) {
+        if (strcmp(tok.str_val, str) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
