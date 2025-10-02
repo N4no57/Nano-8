@@ -188,8 +188,9 @@ TokenList tokenise(char **lines) {
                 i++;
 
                 if (line[i] == '$' || line[i] == '%') {
+                    int base = get_base(line[i]);
                     i++;
-                    parse_number(&token_list, line, &i, get_base(line[i]));
+                    parse_number(&token_list, line, &i, base);
                 } else if (isdigit(line[i])) {
                     parse_number(&token_list, line, &i, 10);
                 } else if (isalpha(line[i])) {
