@@ -17,7 +17,6 @@ struct LinkedSegment {
     uint32_t base_address;  // where it will start in final binary
     uint8_t *data;          // concatenated segment data
     uint32_t data_cap;
-    uint32_t data_offset;
 };
 
 struct GlobalSymbol {
