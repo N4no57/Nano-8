@@ -12,7 +12,25 @@ uint32_t segment_table_capacity = 8;
 uint32_t segment_table_count = 0;
 struct LinkedSegment *linkedSegments = NULL;
 
-void append_segment(struct LinkedSegment seg) {
+int find_MemoryRegion(const struct MemoryRegion *mem, const char *name) {
+    for (int i = 0; i < memRegion_count; i++) {
+        if (strcmp(name, mem[i].name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int find_SegmentRule(const struct SegmentRule *rules, const char *name) {
+    for (int i = 0; i < segRule_count; i++) {
+        if (strcmp(name, rules[i].name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void append_segment(struct LinkedSegment seg, struct SegmentRule *rules, struct MemoryRegion *mem) {
     if (segment_table_count >= segment_table_capacity) {
         segment_table_capacity *= 2;
         struct LinkedSegment *tmp = realloc(linkedSegments, sizeof(struct LinkedSegment) * segment_table_capacity);
@@ -23,8 +41,10 @@ void append_segment(struct LinkedSegment seg) {
         linkedSegments = tmp;
     }
 
-    for (int i = 0; i < segment_table_count; i++) {
-        seg.base_address += linkedSegments[i].size;
+    if (!configFile) {
+        for (int i = 0; i < segment_table_count; i++) {
+            seg.base_address += linkedSegments[i].size;
+        }
     }
 
     linkedSegments[segment_table_count] = seg;
@@ -102,18 +122,9 @@ void append_segmentMapEntry(const struct SegmentMapEntry entry, const uint32_t o
     segmentMap[obj_idx][local_segment_idx] = entry;
 }
 
-int find_MemoryRegion(const struct MemoryRegion *mem, const char *name) {
-    for (int i = 0; i < memRegion_count; i++) {
-        if (strcmp(name, mem[i].name) == 0) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-int find_SegmentRule(const struct SegmentRule *rules, const char *name) {
-    for (int i = 0; i < segRule_count; i++) {
-        if (strcmp(name, rules[i].name) == 0) {
+int find_localSegment(struct SegmentTable *segTable, char name[16]) {
+    for (int i = 0; i < segTable->numSegments; i++) {
+        if (strcmp(segTable->entries[i].name, name) == 0) {
             return i;
         }
     }
@@ -149,14 +160,19 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
         uint32_t data_offset = 0;
         for (int j = 0; j < objs[i].header.segmentTable.numSegments; j++) {
             char *segName = objs[i].header.segmentTable.entries[j].name;
-            const struct MemoryRegion *region = NULL;
+            struct MemoryRegion *region = NULL;
             if (configFile) {
                 const int segRule_idx = find_SegmentRule(rules, segName);
-                region = &mem[find_MemoryRegion(mem, rules[segRule_idx].load_to)];
+                if (segRule_idx == -1) {
+                    printf("Segment %s not specified on config file", segName);
+                    exit(EXIT_FAILURE);
+                }
+                const int memRegion_idx = find_MemoryRegion(mem, rules[segRule_idx].load_to);
+                region = &mem[memRegion_idx];
             }
             const int seg_idx = find_segment(segName);
             if (seg_idx != -1) {
-                const uint8_t *data = objs[i].Data + data_offset + linkedSegments[seg_idx].data_offset;
+                const uint8_t *data = objs[i].Data + data_offset;
                 offset_adjust[j] = linkedSegments[seg_idx].size;
                 append_segment_data(data, objs[i].header.segmentTable.entries[j].size, seg_idx);
                 update_segment_base_addresses();
@@ -164,26 +180,28 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
                 struct LinkedSegment seg;
                 seg.size = objs[i].header.segmentTable.entries[j].size;
                 seg.data_cap = configFile == 0 ? seg.size : region->size;
-                seg.data_offset = configFile == 0 ? 0 : region->start;
                 seg.data = malloc(seg.data_cap);
                 if (!seg.data) {
                     perror("malloc");
                     exit(EXIT_FAILURE);
                 }
-                memcpy(seg.data, objs[i].Data + data_offset + seg.data_offset, seg.size);
+                memcpy(seg.data, objs[i].Data + data_offset, seg.size);
                 strcpy(seg.name, segName);
-                seg.base_address = 0x0000;
-                append_segment(seg);
+                seg.base_address = configFile == 0 ? 0 : region->start + region->current_offset; // placeholder, corrected in append_segment()
+                append_segment(seg, rules, mem);
+                if (configFile) region->current_offset += seg.size;
                 offset_adjust[j] = 0;
             }
             data_offset += objs[i].header.segmentTable.entries[j].size;
         }
 
-        for (int j = 0; j < objs[i].symbolTable.numSymbols; j++) {
-            const int local_segment_idx = objs[i].symbolTable.symbols[j].segment_index;
-            const int global_segment_idx = find_segment(objs[i].header.segmentTable.entries[local_segment_idx].name);
+        struct SegmentTable local_table = objs[i].header.segmentTable;
+        for (int j = 0; j < local_table.numSegments; j++) {
+            char *segName = local_table.entries[j].name;
+            const int local_segment_idx = find_localSegment(&local_table, segName);
+            const int global_segment_idx = find_segment(segName);
             segmentMap[i][local_segment_idx].global_index = global_segment_idx;
-            segmentMap[i][local_segment_idx].offset_adjust = offset_adjust[j];
+            segmentMap[i][local_segment_idx].offset_adjust = offset_adjust[local_segment_idx];
         }
     }
 
@@ -230,9 +248,44 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
     }
 
     FILE *f = fopen(out, "wb");
-    for (size_t i = 0; i < segment_table_count; i++) {
-        fwrite(linkedSegments[i].data, linkedSegments[i].size, 1, f);
+    if (!f) {
+        perror("fopen");
+        exit(EXIT_FAILURE);
     }
+
+    if (configFile) {
+        for (int r = 0; r < memRegion_count; r++) {
+            struct MemoryRegion *region = &mem[r];
+
+            uint32_t used_space = 0;
+            for (int s = 0; s < segment_table_count; s++) {
+                struct LinkedSegment *seg = &linkedSegments[s];
+                const int segRule_idx = find_SegmentRule(rules, seg->name);
+                if (strcmp(rules[segRule_idx].load_to, region->name) == 0) {
+                    uint32_t end = seg->base_address - region->start + seg->size;
+                    if (end > used_space) used_space = end;
+                }
+            }
+
+            uint8_t buffer[region->size];
+
+            for (int s = 0; s < segment_table_count; s++) {
+                struct LinkedSegment *seg = &linkedSegments[s];
+                const int segRule_idx = find_SegmentRule(rules, seg->name);
+                if (strcmp(rules[segRule_idx].load_to, region->name) == 0) {
+                    memcpy(buffer + (seg->base_address - region->start), seg->data, seg->size);
+                }
+            }
+
+            fwrite(buffer, region->fill == 1 ? region->size : used_space, 1, f);
+        }
+    } else {
+        for (size_t i = 0; i < segment_table_count; i++) {
+            fwrite(linkedSegments[i].data, linkedSegments[i].size, 1, f);
+        }
+    }
+
+    fclose(f);
 
     for (size_t i = 0; i < segment_table_count; i++) {
         free(linkedSegments[i].data);
