@@ -17,7 +17,7 @@ typedef struct {
         struct {
             uint64_t reg_high;
             uint64_t reg_low;
-            uint64_t offset;
+            int64_t offset;
         } mem_pair;
     };
 } ParsedOperand;

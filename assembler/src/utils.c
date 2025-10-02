@@ -221,6 +221,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                         fprintf(stderr, "Invalid token\n");
                         exit(1);
                     }
+                    consume_token(tok_idx, current_tok, tokens); // expect "("
                     operand = get_reg_pair(tokens, symbol_table, tok_idx, current_tok); // (r0, r1)
                     operand.kind = INDEXED_MEM;
                     if (current_tok->type == TOKEN_SYMBOL &&
@@ -234,7 +235,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                         fprintf(stderr, "Invalid token\n");
                         exit(1);
                     }
-                    uint64_t num = current_tok->int_value;
+                    int64_t num = current_tok->int_value;
                     if (sign == '-') num *= -1;
                     operand.mem_pair.offset = num;
                     consume_token(tok_idx, current_tok, tokens); // offset num
