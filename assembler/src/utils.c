@@ -195,7 +195,10 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
             case TOKEN_SYMBOL:
                 if (current_tok->str_val[0] == '(') { // indirect reg/mem
                     consume_token(tok_idx, current_tok, tokens); // consume "("
-                    if (current_tok->type == TOKEN_REGISTER) { // expect another reg after a ","
+                    if (matches(*current_tok, TOKEN_REGISTER, "SP\0", 0)) { // using SP for mem access
+                        operand.kind = INDIRECT_REG;
+                        operand.mem_pair.reg_high = get_reg("SP");
+                    } else if (current_tok->type == TOKEN_REGISTER) { // expect another reg after a ","
                         operand = get_reg_pair(tokens, symbol_table, tok_idx, current_tok);
                     } else if (is_base_mod(*current_tok)) {
                         consume_token(tok_idx, current_tok, tokens);
