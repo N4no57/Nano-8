@@ -40,7 +40,7 @@ typedef struct FDC {
     int motor_ticks, seek_ticks, byte_timer, byte_ticks;
 
     enum FDCPhase phase;
-    int args_expected, args_recieved;
+    int args_expected, args_received;
 } FDC;
 
 int mount_floppy_disk(FDC *controller, FloppyDisk *floppy_disk, int drive_number);

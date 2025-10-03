@@ -43,16 +43,17 @@ void write_FDC(FDC *controller, int value, int port) {
                 controller->phase = PHASE_ARGS;
             } else {
                 // command args or data
-                if (controller->current_command == CMD_READ && controller->args_recieved == 0) {
+                if (controller->current_command == CMD_READ && controller->args_received == 0) {
                     controller->current_track = value;
                     controller->args_expected = 2;
-                    controller->args_recieved = 1;
-                } else if (controller->current_command == CMD_READ && controller->args_recieved == 1) {
+                    controller->args_received = 1;
+                } else if (controller->current_command == CMD_READ && controller->args_received == 1) {
                     controller->current_sector = value;
                     int sectors_per_track = controller->floppy_disks[controller->current_drive]->sectors;
                     current_offset = (controller->current_track*sectors_per_track + (controller->current_sector-1))*512;
-                    controller->ticks_remaining = 10000; // placeholder
-                    controller->byte_ticks = 1000; // placeholder
+                    controller->ticks_remaining = 512*4; // placeholder
+                    controller->byte_ticks = 4; // placeholder
+                    controller->phase = PHASE_EXEC;
                 }
             }
     }
@@ -80,7 +81,18 @@ void tick_fdc(FDC *controller) {
 
         if (--controller->byte_timer == 0) {
             controller->byte_timer = controller->byte_ticks;
-
+            if (controller->current_command == CMD_READ) {
+                controller->FIFO[controller->fifo_len] =
+                    controller->floppy_disks[controller->current_drive]->data[current_offset + controller->fifo_len];
+                controller->fifo_len++;
+                return;
+            }
+            if (controller->current_command == CMD_WRITE) {
+                controller->floppy_disks[controller->current_drive]->data[current_offset + controller->fifo_len] =
+                    controller->FIFO[controller->fifo_len];
+                controller->fifo_len++;
+                return;
+            }
         }
 
         if (controller->ticks_remaining == 0) {
