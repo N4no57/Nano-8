@@ -559,7 +559,7 @@ void encode_complexArith(uint8_t base_opcode, int operand_count, AssemblingSegme
     }
     if (operands[0].kind == REGISTER && operands[1].kind == IMMEDIATE) {
         seg->data[seg->size++] = base_opcode + 0b00000100;
-        encode_reg_indreg(seg->data, &seg->size, operands);
+        encode_reg_imm(seg->data, &seg->size, operands);
     }
 }
 
