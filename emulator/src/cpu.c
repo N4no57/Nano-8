@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../include/pmio.h"
+
+int halt = 0;
+
 uint8_t fetch_byte(CPU *cpu) {
     return read_byte(&cpu->memory, cpu->PC++);
 }
@@ -75,10 +79,10 @@ uint8_t read_reg(const CPU *cpu, const uint8_t reg) {
 
 void set_flags(CPU *cpu, const uint16_t value, const uint8_t values[2], const uint8_t mask) {
     // mask = 0b0000, 1 - O, 2 - C, 3 - N, 4 - Z
-    if ((mask & 0b1) == 0) cpu->FR.Z = value == 0;
-    if ((mask & 0b10) == 0) cpu->FR.N = (value & 0x80) != 0;
-    if ((mask & 0b100) == 0) cpu->FR.C = value > 255;
-    if ((mask & 0b1000) == 0) {
+    if ((mask & 0b1) == 1) cpu->FR.Z = value == 0;
+    if ((mask & 0b10) == 1) cpu->FR.N = (value & 0x80) != 0;
+    if ((mask & 0b100) == 1) cpu->FR.C = value > 255;
+    if ((mask & 0b1000) == 1) {
         if (values[0] > 0 && values[1] > 0) cpu->FR.O = (value & 0x80) != 0;
         else if (values[0] < 0 && values[1] < 0) cpu->FR.O = (value & 0x80) == 0;
     }
@@ -210,7 +214,7 @@ void execute_complexArith(CPU *cpu, const uint8_t instruction, const uint8_t ari
     if (type == 0) { // inst reg_1, reg_2
         decode_reg_reg(cpu, values);
         operand[1] = (int8_t)read_reg(cpu, values[1]);
-    } else if (type == 0b01 << 2) {
+    } else if (type == 0b01 << 2) { // inst reg, imm
         decode_reg_imm(cpu, values);
         operand[1] = (int8_t)values[1];
     }
@@ -315,6 +319,16 @@ void execute_jmp(CPU *cpu, const uint8_t instruction, uint8_t push_old_pc) {
     }
 }
 
+void skip_jmp_bytes(CPU *cpu, const uint8_t instruction) {
+    const uint8_t type = instruction & 0b0001100;
+
+    if (type == 0 || type == 0b11 << 2) { // absolute
+        cpu->PC += 2;
+    } else if (type == 0b01 << 2 || type == 0b10 << 2) { // indirect reg
+        cpu->PC++;
+    }
+}
+
 void CPU_init(CPU *cpu) {
     memory_init(&cpu->memory);
     memset(&cpu->ports, 0, sizeof(cpu->ports));
@@ -331,6 +345,7 @@ void reset(CPU *cpu) {
 }
 
 void exec_inst(CPU *cpu) {
+    if (halt) return;
     const uint8_t instruction = fetch_byte(cpu);
     const uint8_t base_opcode = (instruction & 0b11) == 0 ? instruction & 0b11100011 : instruction & 0b11110011;
     switch (base_opcode) {
@@ -350,11 +365,20 @@ void exec_inst(CPU *cpu) {
             set_reg(cpu, fetch_byte(cpu), read_byte(&cpu->memory, cpu->SP++));
             break;
         case INB:
-            uint8_t port = fetch_byte(cpu);
             uint8_t reg = fetch_byte(cpu) >> 4;
-            set_reg(cpu, reg, cpu->ports[port]);
+            uint8_t portin = fetch_byte(cpu);
+            set_reg(cpu, reg, port_read(cpu, portin));
             break;
-        case OUTB: // TODO
+        case OUTB:
+            const uint8_t typeport = instruction & 0b0011100;
+            uint8_t portout = fetch_byte(cpu);
+            if (typeport == 0) { // reg
+                uint8_t reg = fetch_byte(cpu) >> 4;
+                port_write(cpu, portout,read_reg(cpu, reg));
+            } else if (typeport == 0b01 << 2) {
+                uint8_t imm = fetch_byte(cpu);
+                port_write(cpu, portout, imm);
+            }
             break;
         case ADD:
             execute_complexArith(cpu, instruction, 0, 0b1111);
@@ -400,27 +424,35 @@ void exec_inst(CPU *cpu) {
             break;
         case JZ:
             if (cpu->FR.Z) execute_jmp(cpu, instruction, 0);
+            else skip_jmp_bytes(cpu, instruction);
             break;
         case JNZ:
             if (!cpu->FR.Z) execute_jmp(cpu, instruction, 0);
+            else skip_jmp_bytes(cpu, instruction);
             break;
         case JC:
             if (cpu->FR.C) execute_jmp(cpu, instruction, 0);
+            else skip_jmp_bytes(cpu, instruction);
             break;
         case JNC:
             if (!cpu->FR.C) execute_jmp(cpu, instruction, 0);
+            else skip_jmp_bytes(cpu, instruction);
             break;
         case JO:
             if (cpu->FR.O) execute_jmp(cpu, instruction, 0);
+            else skip_jmp_bytes(cpu, instruction);
             break;
         case JNO:
             if (!cpu->FR.O) execute_jmp(cpu, instruction, 0);
+            else skip_jmp_bytes(cpu, instruction);
             break;
         case JN:
             if (cpu->FR.N) execute_jmp(cpu, instruction, 0);
+            else skip_jmp_bytes(cpu, instruction);
             break;
         case JNN:
             if (!cpu->FR.N) execute_jmp(cpu, instruction, 0);
+            else skip_jmp_bytes(cpu, instruction);
             break;
         case CALL:
             execute_jmp(cpu, instruction, 1);
@@ -431,7 +463,8 @@ void exec_inst(CPU *cpu) {
             cpu->SP+=2;
             break;
         case HLT:
-            return;
+            halt = 1;
+            break;
         case NOP:
             break;
         case CLI:
