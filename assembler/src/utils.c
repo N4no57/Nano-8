@@ -35,11 +35,11 @@ int get_reg(const char *s) {
     if (strcmp(s, "r1") == 0) return 1;
     if (strcmp(s, "r2") == 0) return 2;
     if (strcmp(s, "r3") == 0) return 3;
-    if (strcmp(s, "pc") == 0) return 12;
-    if (strcmp(s, "sp") == 0) return 13;
-    if (strcmp(s, "bp") == 0) return 14;
-    if (strcmp(s, "h") == 0) return 15;
-    if (strcmp(s, "l") == 0) return 16;
+    if (strcmp(s, "pc") == 0) return 11;
+    if (strcmp(s, "sp") == 0) return 12;
+    if (strcmp(s, "bp") == 0) return 13;
+    if (strcmp(s, "h") == 0) return 14;
+    if (strcmp(s, "l") == 0) return 15;
     return -1;
 }
 
