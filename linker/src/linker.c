@@ -236,14 +236,21 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
             const uint32_t offset_adjust = segmentMap[i][objs[i].relocationTable.relocations[j].segment_index].offset_adjust;
             const uint32_t offset = objs[i].relocationTable.relocations[j].segment_offset;
             const uint32_t target_offset = offset_adjust + offset;
+            const uint8_t type = objs[i].relocationTable.relocations[j].type;
             const int symbol_idx = find_symbol(objs[i].relocationTable.relocations[j].name);
             if (symbol_idx == -1) {
                 printf("nano8-ld: fatal-error: symbol not found %s\n", objs[i].relocationTable.relocations[j].name);
                 exit(EXIT_FAILURE);
             }
             const uint32_t address = symbolTable[symbol_idx].absolute_address + addend;
-            linkedSegments[target_seg].data[target_offset] = address & 0xFF;
-            linkedSegments[target_seg].data[target_offset+1] = address >> 8 & 0xFF;
+            if (type == 0) { // absolute
+                linkedSegments[target_seg].data[target_offset] = address & 0xFF;
+                linkedSegments[target_seg].data[target_offset+1] = address >> 8 & 0xFF;
+            } else if (type == 1) { // relative
+                // abs - current = rel
+                int8_t relative_address = (int8_t)(address - (linkedSegments[target_seg].base_address + target_offset + 1));
+                linkedSegments[target_seg].data[target_offset] = relative_address;
+            }
         }
     }
 
