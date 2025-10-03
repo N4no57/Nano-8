@@ -54,6 +54,13 @@ char *registers[] = {
     "r1",
     "r2",
     "r3",
+    "r4",
+    "r5",
+    "r6",
+    "r7",
+    "r8",
+    "r9",
+    "r10",
     "pc",
     "sp",
     "bp",
@@ -119,7 +126,7 @@ int ismnemonic(const char *s) {
 }
 
 int isregister(const char *s) {
-    for (int i = 0; i < sizeof(registers) / sizeof(registers[0]); i++) {
+    for (int i = 0; i < 16; i++) {
         if (strcmp(s, registers[i]) == 0) {
             return 1;
         }
