@@ -11,4 +11,6 @@ add_executable(emulator src/main.c
         include/memory.h
         src/emulatorTests.c
         include/emulatorTests.h
+        src/floppyDiskController.c
+        include/floppyDiskController.h
 )
