@@ -1,6 +1,9 @@
 #include "../include/cpu.h"
+#include "../include/emulatorTests.h"
 
 int main() {
+  test_emulator();
+
   CPU cpu;
   CPU_init(&cpu);
 

@@ -86,29 +86,29 @@ void set_flags(CPU *cpu, const uint16_t value, const uint8_t values[2], const ui
 
 void decode_reg_reg(CPU *cpu, uint16_t *values) {
     uint8_t tmp = fetch_byte(cpu);
-    values[0] = tmp & 0x0F; // reg 1
-    values[1] = (tmp >> 4) & 0x0F; // reg 2
+    values[0] = (tmp >> 4) & 0x0F; // reg 2
+    values[1] = tmp & 0x0F; // reg 1
 }
 
 void decode_reg_imm(CPU *cpu, uint16_t *values) {
-    values[0] = fetch_byte(cpu) & 0xF; // register
+    values[0] = fetch_byte(cpu) >> 4 & 0xF; // register
     values[1] = fetch_byte(cpu); // immediate
 }
 
 void decode_reg_abs(CPU *cpu, uint16_t *values) {
-    values[0] = fetch_byte(cpu) & 0xF; // register
+    values[0] = fetch_byte(cpu) >> 4 & 0xF; // register
     values[1] = fetch_word(cpu); // absolute
 }
 
 void decode_reg_indreg(CPU *cpu, uint16_t *values) {
-    values[0] = fetch_byte(cpu) & 0xF;
+    values[0] = fetch_byte(cpu) >> 4 & 0xF;
     const uint8_t tmp = fetch_byte(cpu);
     values[1] = tmp & 0x0F;         // idx reg low
     values[2] = (tmp >> 4) & 0x0F;  // idx reg high
 }
 
 void decode_reg_idx(CPU *cpu, uint16_t *values) {
-    values[0] = fetch_byte(cpu) & 0xF;  // reg 1
+    values[0] = fetch_byte(cpu) >> 4 & 0xF;  // reg 1
     const uint8_t tmp = fetch_byte(cpu);
     values[1] = tmp & 0x0F;             // idx reg low
     values[2] = (tmp >> 4) & 0x0F;      // idx reg high
@@ -117,14 +117,14 @@ void decode_reg_idx(CPU *cpu, uint16_t *values) {
 
 void decode_abs_reg(CPU *cpu, uint16_t *values) {
     values[0] = fetch_word(cpu); // absolute
-    values[1] = fetch_byte(cpu) & 0xF; // register
+    values[1] = fetch_byte(cpu) >> 4 & 0xF; // register
 }
 
 void decode_indreg_reg(CPU *cpu, uint16_t *values) {
     const uint8_t tmp = fetch_byte(cpu);
     values[0] = tmp & 0x0F; // idx reg low
     values[1] = (tmp >> 4) & 0x0F; // idx reg high
-    values[2] = fetch_byte(cpu) & 0xF;
+    values[2] = fetch_byte(cpu) >> 4 & 0xF;
 }
 
 void decode_idx_reg(CPU *cpu, uint16_t *values) {
@@ -132,11 +132,11 @@ void decode_idx_reg(CPU *cpu, uint16_t *values) {
     values[0] = tmp & 0x0F;             // idx reg low
     values[1] = (tmp >> 4) & 0x0F;      // idx reg high
     values[2] = fetch_word(cpu);        // index
-    values[3] = fetch_byte(cpu) & 0xF;  // reg 1
+    values[3] = fetch_byte(cpu) >> 4 & 0xF;  // reg 1
 }
 
 void decode_reg(CPU *cpu, uint16_t *values) {
-    values[0] = fetch_byte(cpu) & 0xF;
+    values[0] = fetch_byte(cpu) >> 4 & 0xF;
 }
 
 void decode_imm(CPU *cpu, uint16_t *values) {
@@ -176,7 +176,7 @@ void execute_mov(CPU *cpu, const uint8_t instruction) {
         uint16_t values[4]; // 0: dest, 1: low reg, 2: high reg, 3: offset
         decode_reg_idx(cpu, values);
         const uint16_t address = (read_reg(cpu, values[1]) | read_reg(cpu, values[2]) << 8) + (int16_t)values[3];
-        set_reg(cpu, address, read_byte(&cpu->memory, address));
+        set_reg(cpu, values[0], read_byte(&cpu->memory, address));
     } else if (type == 0b101 << 2) { // mov abs, reg
         uint16_t values[2]; // 0: abs, 1: reg
         decode_abs_reg(cpu, values);
@@ -184,8 +184,8 @@ void execute_mov(CPU *cpu, const uint8_t instruction) {
     } else if (type == 0b110 << 2) { // mov (h(igh)Reg, l(ow)Reg), reg
         uint16_t values[3]; // 0: low reg, 1: high reg 2: reg
         decode_indreg_reg(cpu, values);
-        write_byte(&cpu->memory,read_reg(cpu, values[0])
-                 + read_reg(cpu, values[1]), read_reg(cpu, values[2]));
+        write_byte(&cpu->memory, read_reg(cpu, values[0]) | read_reg(cpu, values[1]) << 8,
+            read_reg(cpu, values[2]));
     } else if (type == 0b111 << 2) { // mov [(h(igh)Reg, l(ow)Reg)±offset], reg
         uint16_t values[4]; // 0: low reg, 1: high reg, 2: offset, 3: dest
         decode_idx_reg(cpu, values);
