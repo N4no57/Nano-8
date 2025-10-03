@@ -1,42 +1,45 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "../include/cpu.h"
 #include "../include/emulatorTests.h"
 
 int main() {
-  test_emulator();
+    test_emulator();
 
-  CPU cpu;
-  CPU_init(&cpu);
+    CPU cpu;
+    CPU_init(&cpu);
 
-  FloppyDisk disk = {0};
+    FloppyDisk disk = {0};
 
-  FDC controller = {0};
+    FDC controller = {0};
 
-  disk.sector_size = 512;
-  disk.sectors = 18;
-  disk.tracks = 80;
-  disk.heads = 2;
-  disk.size = disk.sector_size * disk.sectors * disk.tracks * disk.heads;
-  disk.data = malloc(disk.size);
+    cpu.floppy_controller = controller;
 
-  mount_floppy_disk(&controller, &disk, 0);
+    cpu.floppy_controller.phase = PHASE_CMD;
 
-  cpu.floppy_controller = controller;
+    disk.sector_size = 512;
+    disk.sectors = 18;
+    disk.tracks = 80;
+    disk.heads = 2;
+    disk.size = disk.sector_size * disk.sectors * disk.tracks * disk.heads;
+    disk.data = malloc(disk.size);
+    memset(disk.data, 0, disk.size);
+    memset(disk.data, 0xFF, 512);
 
-  cpu.memory.data[0xFFF0] = 0x00; // reset vec
-  cpu.memory.data[0xFFF1] = 0x10;
+    mount_floppy_disk(&cpu.floppy_controller, &disk, 0);
 
-  reset(&cpu);
+    cpu.memory.data[0xFFF0] = 0x00; // reset vec
+    cpu.memory.data[0xFFF1] = 0x80;
 
-  // inline program injection
-  cpu.memory.data[0x1000] = 0x04;
-  cpu.memory.data[0x1001] = 0x00;
-  cpu.memory.data[0x1002] = 0x0A;
-  cpu.memory.data[0x1003] = 0x03;
-  // end - inline program injection
+    reset(&cpu);
 
-  exec_inst(&cpu);
+    FILE *f = fopen("o.bin", "rb");
+    fread(&cpu.memory.data[0x8000], 1, 512, f);
 
+    while (1) {
+        tick_fdc(&cpu.floppy_controller);
+        exec_inst(&cpu);
+    }
   return 0;
 }
