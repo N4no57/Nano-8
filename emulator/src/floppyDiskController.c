@@ -41,11 +41,11 @@ void write_FDC(FDC *controller, int value, int port) {
                 controller->MSR |= 0b00010000;
                 controller->fifo_len = controller->fifo_pos = 0;
                 controller->phase = PHASE_ARGS;
+                controller->args_expected = 2;
             } else {
                 // command args or data
                 if (controller->current_command == CMD_READ && controller->args_received == 0) {
                     controller->current_track = value;
-                    controller->args_expected = 2;
                     controller->args_received = 1;
                 } else if (controller->current_command == CMD_READ && controller->args_received == 1) {
                     controller->current_sector = value;
@@ -74,7 +74,7 @@ void tick_fdc(FDC *controller) {
 
     controller->rotation_pos = (controller->rotation_pos + 1)
     % (controller->floppy_disks[controller->current_drive]->sectors
-        * controller->floppy_disks[controller->current_drive]->tracks);
+        * controller->floppy_disks[controller->current_drive]->sector_size);
 
     if (controller->MSR & 16 && controller->ticks_remaining > 0) {
         controller->ticks_remaining--;
