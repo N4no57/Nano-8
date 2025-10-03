@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "../include/cpu.h"
 #include "../include/emulatorTests.h"
 
@@ -6,6 +8,21 @@ int main() {
 
   CPU cpu;
   CPU_init(&cpu);
+
+  FloppyDisk disk = {0};
+
+  FDC controller = {0};
+
+  disk.sector_size = 512;
+  disk.sectors = 18;
+  disk.tracks = 80;
+  disk.heads = 2;
+  disk.size = disk.sector_size * disk.sectors * disk.tracks * disk.heads;
+  disk.data = malloc(disk.size);
+
+  mount_floppy_disk(&controller, &disk, 0);
+
+  cpu.floppy_controller = controller;
 
   cpu.memory.data[0xFFF0] = 0x00; // reset vec
   cpu.memory.data[0xFFF1] = 0x10;
@@ -19,7 +36,7 @@ int main() {
   cpu.memory.data[0x1003] = 0x03;
   // end - inline program injection
 
-  execute(&cpu);
+  exec_inst(&cpu);
 
   return 0;
 }
