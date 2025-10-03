@@ -330,122 +330,125 @@ void reset(CPU *cpu) {
     cpu->PC = address;
 }
 
-void execute(CPU *cpu) {
-    while (1) {
-        const uint8_t instruction = fetch_byte(cpu);
-        const uint8_t base_opcode = (instruction & 0b11) == 0 ? instruction & 0b11100011 : instruction & 0b11110011;
-        switch (base_opcode) {
-            case MOV:
-                execute_mov(cpu, instruction);
-                break;
-            case PUSH:
-                const uint8_t type = instruction & 0b0001100;
+void exec_inst(CPU *cpu) {
+    const uint8_t instruction = fetch_byte(cpu);
+    const uint8_t base_opcode = (instruction & 0b11) == 0 ? instruction & 0b11100011 : instruction & 0b11110011;
+    switch (base_opcode) {
+        case MOV:
+            execute_mov(cpu, instruction);
+            break;
+        case PUSH:
+            const uint8_t type = instruction & 0b0001100;
 
-                if (type == 0) { // register
-                    write_byte(&cpu->memory, --cpu->SP, read_reg(cpu, fetch_byte(cpu) >> 4));
-                } else if (type == 0b01 << 2) { // immediate
-                    write_byte(&cpu->memory, --cpu->SP, fetch_byte(cpu));
-                }
-                break;
-            case POP:
-                set_reg(cpu, fetch_byte(cpu), read_byte(&cpu->memory, cpu->SP++));
-                break;
-            case INB:
-                uint8_t port = fetch_byte(cpu);
-                uint8_t reg = fetch_byte(cpu) >> 4;
-                set_reg(cpu, reg, cpu->ports[port]);
-                break;
-            case OUTB: // TODO
-                break;
-            case ADD:
-                execute_complexArith(cpu, instruction, 0, 0b1111);
-                break;
-            case SUB:
-                execute_complexArith(cpu, instruction, 1, 0b1111);
-                break;
-            case CMP:
-                execute_complexArith(cpu, instruction, 7, 0b1111);
-                break;
-            case INC:
-                execute_simpleArith(cpu, 0, 0b0111);
-                break;
-            case DEC:
-                execute_simpleArith(cpu, 1, 0b0011);
-                break;
-            case MUL:
-                execute_complexArith(cpu, instruction, 2, 0b0111);
-                break;
-            case DIV:
-                execute_complexArith(cpu, instruction, 3, 0b0011);
-                break;
-            case AND:
-                execute_complexArith(cpu, instruction, 4, 0b0011);
-                break;
-            case OR:
-                execute_complexArith(cpu, instruction, 5, 0b0011);
-                break;
-            case XOR:
-                execute_complexArith(cpu, instruction, 6, 0b0011);
-                break;
-            case NOT:
-                execute_simpleArith(cpu, 4, 0b0011);
-                break;
-            case SHL:
-                execute_simpleArith(cpu, 2, 0b0111);
-                break;
-            case SHR:
-                execute_simpleArith(cpu, 3, 0b0111);
-                break;
-            case JMP:
-                execute_jmp(cpu, instruction, 0);
-                break;
-            case JZ:
-                if (cpu->FR.Z) execute_jmp(cpu, instruction, 0);
-                break;
-            case JNZ:
-                if (!cpu->FR.Z) execute_jmp(cpu, instruction, 0);
-                break;
-            case JC:
-                if (cpu->FR.C) execute_jmp(cpu, instruction, 0);
-                break;
-            case JNC:
-                if (!cpu->FR.C) execute_jmp(cpu, instruction, 0);
-                break;
-            case JO:
-                if (cpu->FR.O) execute_jmp(cpu, instruction, 0);
-                break;
-            case JNO:
-                if (!cpu->FR.O) execute_jmp(cpu, instruction, 0);
-                break;
-            case JN:
-                if (cpu->FR.N) execute_jmp(cpu, instruction, 0);
-                break;
-            case JNN:
-                if (!cpu->FR.N) execute_jmp(cpu, instruction, 0);
-                break;
-            case CALL:
-                execute_jmp(cpu, instruction, 1);
-                break;
-            case RET:
-                // assumes return address is at the top of the stack
-                cpu->PC = read_word(&cpu->memory, cpu->SP);
-                cpu->SP+=2;
-                break;
-            case HLT:
-                return;
-            case NOP:
-                break;
-            case CLI:
-                cpu->FR.I = 0;
-                break;
-            case STI:
-                cpu->FR.I = 1;
-                break;
-            case IRET: // TODO
-                break;
-            default:
-                printf("Instruction not handled\nOpcode: %02x", instruction);
-                return;
-        }
+            if (type == 0) { // register
+                write_byte(&cpu->memory, --cpu->SP, read_reg(cpu, fetch_byte(cpu) >> 4));
+            } else if (type == 0b01 << 2) { // immediate
+                write_byte(&cpu->memory, --cpu->SP, fetch_byte(cpu));
+            }
+            break;
+        case POP:
+            set_reg(cpu, fetch_byte(cpu), read_byte(&cpu->memory, cpu->SP++));
+            break;
+        case INB:
+            uint8_t port = fetch_byte(cpu);
+            uint8_t reg = fetch_byte(cpu) >> 4;
+            set_reg(cpu, reg, cpu->ports[port]);
+            break;
+        case OUTB: // TODO
+            break;
+        case ADD:
+            execute_complexArith(cpu, instruction, 0, 0b1111);
+            break;
+        case SUB:
+            execute_complexArith(cpu, instruction, 1, 0b1111);
+            break;
+        case CMP:
+            execute_complexArith(cpu, instruction, 7, 0b1111);
+            break;
+        case INC:
+            execute_simpleArith(cpu, 0, 0b0111);
+            break;
+        case DEC:
+            execute_simpleArith(cpu, 1, 0b0011);
+            break;
+        case MUL:
+            execute_complexArith(cpu, instruction, 2, 0b0111);
+            break;
+        case DIV:
+            execute_complexArith(cpu, instruction, 3, 0b0011);
+            break;
+        case AND:
+            execute_complexArith(cpu, instruction, 4, 0b0011);
+            break;
+        case OR:
+            execute_complexArith(cpu, instruction, 5, 0b0011);
+            break;
+        case XOR:
+            execute_complexArith(cpu, instruction, 6, 0b0011);
+            break;
+        case NOT:
+            execute_simpleArith(cpu, 4, 0b0011);
+            break;
+        case SHL:
+            execute_simpleArith(cpu, 2, 0b0111);
+            break;
+        case SHR:
+            execute_simpleArith(cpu, 3, 0b0111);
+            break;
+        case JMP:
+            execute_jmp(cpu, instruction, 0);
+            break;
+        case JZ:
+            if (cpu->FR.Z) execute_jmp(cpu, instruction, 0);
+            break;
+        case JNZ:
+            if (!cpu->FR.Z) execute_jmp(cpu, instruction, 0);
+            break;
+        case JC:
+            if (cpu->FR.C) execute_jmp(cpu, instruction, 0);
+            break;
+        case JNC:
+            if (!cpu->FR.C) execute_jmp(cpu, instruction, 0);
+            break;
+        case JO:
+            if (cpu->FR.O) execute_jmp(cpu, instruction, 0);
+            break;
+        case JNO:
+            if (!cpu->FR.O) execute_jmp(cpu, instruction, 0);
+            break;
+        case JN:
+            if (cpu->FR.N) execute_jmp(cpu, instruction, 0);
+            break;
+        case JNN:
+            if (!cpu->FR.N) execute_jmp(cpu, instruction, 0);
+            break;
+        case CALL:
+            execute_jmp(cpu, instruction, 1);
+            break;
+        case RET:
+            // assumes return address is at the top of the stack
+            cpu->PC = read_word(&cpu->memory, cpu->SP);
+            cpu->SP+=2;
+            break;
+        case HLT:
+            return;
+        case NOP:
+            break;
+        case CLI:
+            cpu->FR.I = 0;
+            break;
+        case STI:
+            cpu->FR.I = 1;
+            break;
+        case IRET: // TODO
+            break;
+        default:
+            printf("Instruction not handled\nOpcode: %02x", instruction);
+    }
+}
+
+void execute(CPU *cpu) {
+    while (read_byte(&cpu->memory, cpu->PC) != HLT) {
+        exec_inst(cpu);
     }
 }

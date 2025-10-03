@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "flags.h"
 #include "memory.h"
+#include "floppyDiskController.h"
 
 #define MAX_PORTS 256
 
@@ -53,10 +54,13 @@ typedef struct {
 
     Memory memory;
     uint8_t ports[MAX_PORTS];
+
+    FDC floppy_controller;
 } CPU;
 
 void CPU_init(CPU *cpu);
 void reset(CPU *cpu);
+void exec_inst(CPU *cpu);
 void execute(CPU *cpu);
 
 #endif //CPU_H
