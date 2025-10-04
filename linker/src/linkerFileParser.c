@@ -3,6 +3,7 @@
 //
 
 #include "../include/linkerFileParser.h"
+#include "../include/flags.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -251,6 +252,15 @@ void push_memRegion(struct MemoryRegion **memRegions, char name[16], struct KeyV
         exit(EXIT_FAILURE);
     }
 
+    if (verbose) {
+        printf("Memory Region:\n");
+        printf("\tname: %s\n", (*memRegions)[memRegion_count].name);
+        printf("\tsize: %d\n", (*memRegions)[memRegion_count].size);
+        printf("\tstart: %d\n", (*memRegions)[memRegion_count].start);
+        printf("\tcurrent_offset: %d\n", (*memRegions)[memRegion_count].current_offset);
+        printf("\tfill: %d\n", (*memRegions)[memRegion_count].fill);
+    }
+
     memRegion_count++;
 }
 
@@ -283,6 +293,15 @@ void push_segRule(struct SegmentRule **segRules, char name[16], struct KeyValue 
     if (strlen((*segRules)[segRule_count].load_to) == 0) {
         printf("Segment \"%s\" requires a memory chunk to load to", (*segRules)[segRule_count].name);
         exit(EXIT_FAILURE);
+    }
+
+    if (verbose) {
+        printf("Segment Rule:\n");
+        printf("\tname: %s\n", (*segRules)[segRule_count].name);
+        printf("\tload_to: %s\n", (*segRules)[segRule_count].load_to);
+        if ((*segRules)[segRule_count].explicit_start <= 0xFFFF) {
+            printf("\texplicit_start: %d\n", (*segRules)[segRule_count].explicit_start);
+        }
     }
 
     segRule_count++;

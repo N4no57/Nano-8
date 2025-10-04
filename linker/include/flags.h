@@ -8,5 +8,6 @@
 #include <stdbool.h>
 
 extern bool configFile;
+extern bool verbose;
 
 #endif //FLAGS_H

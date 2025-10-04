@@ -11,6 +11,7 @@
 #define LINKER_VERSION "1.0.0"
 
 bool configFile = false;
+bool verbose = false;
 
 int main(const int argc, char **argv) {
     struct MemoryRegion *a = NULL;
@@ -19,7 +20,7 @@ int main(const int argc, char **argv) {
     char *output = DEFAULT_FILENAME;
 
     static struct option long_options[] = {
-        {"version", no_argument, 0, 'v'},
+        {"version", no_argument, 0, 0},
         {NULL, 0, 0, 0}
     };
 
@@ -27,7 +28,7 @@ int main(const int argc, char **argv) {
 
     int option;
     int option_index = 0;
-    while ((option = getopt_long(argc, argv, "ho:C:", long_options, &option_index)) != -1) {
+    while ((option = getopt_long(argc, argv, "ho:C:v", long_options, &option_index)) != -1) {
         switch (option) {
             case 'h':
                 printf("Usage: nano8-ld [options]\n");
@@ -42,7 +43,11 @@ int main(const int argc, char **argv) {
                 break;
             case 'C':
                 configFile = true;
+                if (verbose) printf("Using config file %s\n", optarg);
                 parseFile(optarg, &a, &b);
+                break;
+            case 'v':
+                verbose = true;
                 break;
             case 0:
                 if (strcmp(long_options[option_index].name, "version") == 0) {
@@ -69,6 +74,7 @@ int main(const int argc, char **argv) {
     }
 
     for (int i = optind; i < argc; i++) {
+        if (verbose) printf("Reading file: %s\n", argv[i]);
         o[i-optind] = readObjectFile(argv[i]);
     }
 
