@@ -138,6 +138,7 @@ ParsedOperand parseLabel(const TokenList *tokens, SymbolTable *symbol_table, int
     if (find_symbol(symbol_table, label, &s) == -1 && isPassTwo == true) {
         add_symbol(symbol_table, &current_seg, current_tok->str_val, current_seg.size);
         symbol_table->data[symbol_table->count-1].defined = DEFINED_FALSE;
+        s = symbol_table->data[symbol_table->count-1];
     }
     consume_token(tok_idx, current_tok, tokens);
     int16_t addend = 0;
