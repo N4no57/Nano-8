@@ -131,6 +131,29 @@ int find_localSegment(struct SegmentTable *segTable, char name[16]) {
     return -1;
 }
 
+int correct_relax(const struct ObjectFile *objs, const size_t num_files, const uint32_t target_seg, const uint32_t target_offset) {
+    for (int i = 0; i < num_files; i++) {
+        for (int j = 0; j < objs[i].relocationTable.numRelocations; j++) {
+            struct RelocationEntry *entry = &objs[i].relocationTable.relocations[j];
+            if (segmentMap[i][entry->segment_index].global_index != target_seg) {
+                continue;
+            }
+
+            if (entry->segment_offset > target_offset) {
+                entry->segment_offset--;
+            }
+        }
+    }
+
+    for (int i = 0; i < symbol_table_count; i++) {
+        if (symbolTable[i].absolute_address > linkedSegments[target_seg].base_address + target_offset) {
+            symbolTable[i].absolute_address--;
+        }
+    }
+
+    return 0;
+}
+
 void linker(const struct ObjectFile *objs, const size_t num_files, char *out, struct MemoryRegion *mem, struct SegmentRule *rules) {
     linkedSegments = malloc(sizeof(struct LinkedSegment) * segment_table_capacity);
     if (!linkedSegments) {
@@ -250,6 +273,27 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
                 // abs - current = rel
                 int8_t relative_address = (int8_t)(address - (linkedSegments[target_seg].base_address + target_offset + 1));
                 linkedSegments[target_seg].data[target_offset] = relative_address;
+            } else if (type == 2) { // relax
+                // the idea of relax is when the assembler doesn't know if it should do
+                // relative of absolute relocation it asks the linker please do it for me
+
+                // big thing is all relocations after than need to have their
+                // addresses shifted back to match the new location
+
+                int relative_address = (int)(address - (linkedSegments[target_seg].base_address + target_offset + 1));
+                if (relative_address < -128 || relative_address > 127) { // has to be absolute, real simple
+                    linkedSegments[target_seg].data[target_offset] = address & 0xFF;
+                    linkedSegments[target_seg].data[target_offset+1] = address >> 8 & 0xFF;
+                } else { // is relative
+                    linkedSegments[target_seg].data[target_offset] = (int8_t)relative_address;
+                    // shift all bytes back
+                    memcpy(&linkedSegments[target_seg].data[target_offset+1],
+                        &linkedSegments[target_seg].data[target_offset+2],
+                        linkedSegments[target_seg].size-(target_offset+2));
+                    // update all positional information after the instruction
+                    linkedSegments[target_seg].size--;
+                    correct_relax(objs, num_files, target_seg, offset);
+                }
             }
         }
     }
