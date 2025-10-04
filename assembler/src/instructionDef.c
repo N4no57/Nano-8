@@ -479,11 +479,26 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
         return;
     }
     if (operands[0].kind == REGISTER && operands[1].kind == INDIRECT_REG) {
+        if (operands[1].mem_pair.reg_high == 12) {
+            seg->data[seg->size++] = base_opcode + 0b10100000;
+            seg->data[seg->size++] = operands[0].reg;
+            seg->data[seg->size++] = operands[1].mem_pair.reg_high << 4 & 0xF0;
+            return;
+        }
         seg->data[seg->size++] = base_opcode + 0b00001100;
         encode_reg_indreg(seg->data, &seg->size, operands);
         return;
     }
     if (operands[0].kind == REGISTER && operands[1].kind == INDEXED_MEM) {
+        if (operands[0].mem_pair.reg_high == 12) {
+            seg->data[seg->size++] = base_opcode + 0b10101000;
+            seg->data[seg->size++] = operands[0].reg;
+            seg->data[seg->size++] = operands[1].mem_pair.reg_high << 4 & 0xF0;
+            seg->data[seg->size++] = operands[1].mem_pair.offset & 0xFF;
+            seg->data[seg->size++] = operands[1].mem_pair.offset >> 8 & 0xFF;
+            return;
+        }
+
         seg->data[seg->size++] = base_opcode + 0b00010000;
         encode_reg_idx(seg->data, &seg->size, operands);
         return;
@@ -494,11 +509,27 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
         return;
     }
     if (operands[0].kind == INDIRECT_REG && operands[1].kind == REGISTER) {
+        if (operands[0].mem_pair.reg_high == 12) {
+            seg->data[seg->size++] = base_opcode + 0b10100100;
+            seg->data[seg->size++] = operands[0].mem_pair.reg_high << 4 & 0xF0;
+            seg->data[seg->size++] = operands[1].reg;
+            return;
+        }
+
         seg->data[seg->size++] = base_opcode + 0b00011000;
         encode_indreg_reg(seg->data, &seg->size, operands);
         return;
     }
     if (operands[0].kind == INDEXED_MEM && operands[1].kind == REGISTER) {
+        if (operands[0].mem_pair.reg_high == 12) {
+            seg->data[seg->size++] = base_opcode + 0b10101100;
+            seg->data[seg->size++] = operands[0].mem_pair.reg_high << 4 & 0xF0;
+            seg->data[seg->size++] = operands[0].mem_pair.offset & 0xFF;
+            seg->data[seg->size++] = operands[0].mem_pair.offset >> 8 & 0xFF;
+            seg->data[seg->size++] = operands[1].reg;
+            return;
+        }
+
         seg->data[seg->size++] = base_opcode + 0b00011100;
         encode_idx_reg(seg->data, &seg->size, operands);
     }
