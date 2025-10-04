@@ -157,7 +157,7 @@ ParsedOperand parseLabel(const TokenList *tokens, SymbolTable *symbol_table, int
         int32_t offset = (int32_t)(s.offset - (current_seg.size+1));
         const uint32_t current_seg_idx = get_segment_index(segTable, &current_seg);
         const uint32_t symbol_seg_idx = get_segment_index(segTable, s.segment);
-        if (current_seg_idx == symbol_seg_idx) {
+        if (current_seg_idx == symbol_seg_idx && s.defined == DEFINED_TRUE) {
             if (offset < -128 || offset > 127) {
                 type = RELOC_ABSOLUTE;
             } else {
@@ -202,6 +202,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
                         operand.kind = INDIRECT_REG;
                         operand.mem_pair.reg_high = get_reg("sp");
                         consume_token(tok_idx, current_tok, tokens);
+                        consume_token(tok_idx, current_tok, tokens);
                     } else if (current_tok->type == TOKEN_REGISTER) { // expect another reg after a ","
                         operand = get_reg_pair(tokens, symbol_table, tok_idx, current_tok);
                     } else if (is_base_mod(*current_tok)) {
@@ -228,7 +229,7 @@ ParsedOperand operand_parser(const TokenList *tokens, SymbolTable *symbol_table,
 
                     if (matches(*current_tok, TOKEN_REGISTER, "sp\0", 0)) {
                         operand.kind = INDEXED_MEM;
-                        operand.mem_pair.reg_high = get_reg("sp") << 4 & 0xF0;
+                        operand.mem_pair.reg_high = get_reg("sp");
                         consume_token(tok_idx, current_tok, tokens);
 
                         if (current_tok->type == TOKEN_SYMBOL &&

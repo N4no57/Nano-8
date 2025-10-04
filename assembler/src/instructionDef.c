@@ -490,7 +490,7 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
         return;
     }
     if (operands[0].kind == REGISTER && operands[1].kind == INDEXED_MEM) {
-        if (operands[0].mem_pair.reg_high == 12) {
+        if (operands[1].mem_pair.reg_high == 12) {
             seg->data[seg->size++] = base_opcode + 0b10101000;
             seg->data[seg->size++] = operands[0].reg;
             seg->data[seg->size++] = operands[1].mem_pair.reg_high << 4 & 0xF0;
