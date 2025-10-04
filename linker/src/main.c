@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 #define DEFAULT_FILENAME "o.bin"
-#define LINKER_VERSION "1.0.0"
+#define LINKER_VERSION "1.0.1"
 
 bool configFile = false;
 bool verbose = false;

@@ -154,6 +154,27 @@ int correct_relax(const struct ObjectFile *objs, const size_t num_files, const u
     return 0;
 }
 
+void handle_duplicate_symbol(size_t symbol_idx, const struct ObjectFile *objs, size_t file_idx, size_t symbol_table_idx) {
+    struct Symbol *sym = &objs[file_idx].symbolTable.symbols[symbol_table_idx];
+
+    if (symbolTable[symbol_idx].defined == 0) {
+        struct GlobalSymbol *global = &symbolTable[symbol_idx];
+        global->defined = 1;
+
+        uint32_t local_segment = sym->segment_index;
+
+        global->absolute_address = linkedSegments[segmentMap[file_idx][local_segment].global_index].base_address
+                             + segmentMap[file_idx][local_segment].offset_adjust + sym->segment_offset;
+        return;
+    }
+    if (sym->defined == 0) {
+        return;
+    }
+
+    printf("nano8-ld: fatal error: Found duplicate symbol %s\n", sym->name);
+    exit(EXIT_FAILURE);
+}
+
 void linker(const struct ObjectFile *objs, const size_t num_files, char *out, struct MemoryRegion *mem, struct SegmentRule *rules) {
     linkedSegments = malloc(sizeof(struct LinkedSegment) * segment_table_capacity);
     if (!linkedSegments) {
@@ -230,11 +251,13 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
 
     // combine into global symbol table
     for (size_t i = 0; i < num_files; i++) {
-        for (int j = 0; j < objs[i].symbolTable.numSymbols; j++) {
-            if (find_symbol(objs[i].symbolTable.symbols[j].name) != -1) {
-                printf("nano8-ld: fatal error: Found duplicate symbol %s\n", objs[i].symbolTable.symbols[j].name);
-                exit(EXIT_FAILURE);
+        for (size_t j = 0; j < objs[i].symbolTable.numSymbols; j++) {
+            int symbol_idx = find_symbol(objs[i].symbolTable.symbols[j].name);
+            if (symbol_idx != -1) {
+                handle_duplicate_symbol(symbol_idx, objs, i, j);
+                continue;
             }
+
             struct GlobalSymbol sym;
             strcpy(sym.name, objs[i].symbolTable.symbols[j].name);
 
