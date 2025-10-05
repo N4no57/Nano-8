@@ -10,4 +10,5 @@ add_executable(emulator src/main.c
         src/emulatorTests.c include/emulatorTests.h
         src/floppyDiskController.c include/floppyDiskController.h
         src/pmio.c include/pmio.h
+        src/videoCard.c include/videoCard.h
 )
