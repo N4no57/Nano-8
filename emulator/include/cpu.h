@@ -14,6 +14,7 @@ enum base_ops {
     POP = 0x40,
     INB = 0x60,
     OUTB = 0x80,
+    MOV_SP = 0xA0,
     ADD = 0x01,
     SUB = 0x11,
     CMP = 0x21,

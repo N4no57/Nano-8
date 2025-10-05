@@ -354,7 +354,7 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 				if (current_token.type == TOKEN_LABEL) {
 					relocationTableAppend(reloc_table, current_token.str_val,
 						get_segment_index(segment_table, current_segment),
-						current_segment->size, 0, RELOC_RELATIVE);
+						current_segment->size, 0, RELOC_ABSOLUTE);
 					current_segment->data[current_segment->size++] = 0xFF;
 					consume_token(&tok_idx, &current_token, tokens);
 					continue;
@@ -382,7 +382,7 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 				if (current_token.type == TOKEN_LABEL) {
 					relocationTableAppend(reloc_table, current_token.str_val,
 						get_segment_index(segment_table, current_segment),
-						current_segment->size, 0, RELOC_RELATIVE);
+						current_segment->size, 0, RELOC_ABSOLUTE);
 					current_segment->data[current_segment->size++] = 0xFF;
 					current_segment->data[current_segment->size++] = 0xFF;
 					consume_token(&tok_idx, &current_token, tokens);

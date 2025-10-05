@@ -3,6 +3,7 @@
 //
 
 #include "../include/objectFileReader.h"
+#include "../include/flags.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,12 +40,25 @@ struct ObjectFile readObjectFile(const char *filename) {
         fread(obj.header.segmentTable.entries[i].name, sizeof(obj.header.segmentTable.entries[i].name), 1, f);
         fread(&obj.header.segmentTable.entries[i].size, sizeof(obj.header.segmentTable.entries[i].size), 1, f);
         fread(&obj.header.segmentTable.entries[i].file_offset, sizeof(obj.header.segmentTable.entries[i].file_offset), 1, f);
+        if (verbose) {
+            printf("Segment table entry:\n");
+            printf("\tname: %s\n", obj.header.segmentTable.entries[i].name);
+            printf("\tsize: %d\n", obj.header.segmentTable.entries[i].size);
+            printf("\toffset: %d\n", obj.header.segmentTable.entries[i].file_offset);
+        }
         data_size += obj.header.segmentTable.entries[i].size;
         if (HAVE_PADDING) fseek(f, 10, SEEK_CUR);
     }
 
     obj.Data = malloc(data_size * (sizeof(uint8_t)));
     fread(obj.Data, sizeof(uint8_t), data_size, f);
+    if (verbose) {
+        printf("Object data:\n");
+        for (int i = 0; i < data_size; i++) {
+            printf("%02X ", obj.Data[i]);
+        }
+        printf("\n");
+    }
 
     int pad = (16 - (data_size % 16) - 2) % 16;
     if (pad < 1) pad += 16;
@@ -57,6 +71,13 @@ struct ObjectFile readObjectFile(const char *filename) {
         fread(&obj.symbolTable.symbols[i].segment_index, sizeof(obj.symbolTable.symbols[i].segment_index), 1, f);
         fread(&obj.symbolTable.symbols[i].segment_offset, sizeof(obj.symbolTable.symbols[i].segment_offset), 1, f);
         fread(&obj.symbolTable.symbols[i].defined, sizeof(obj.symbolTable.symbols[i].defined), 1, f);
+        if (verbose) {
+            printf("Symbol table entry:\n");
+            printf("\tname: %s\n", obj.symbolTable.symbols[i].name);
+            printf("\tsegment_index: %d\n", obj.symbolTable.symbols[i].segment_index);
+            printf("\tsegment_offset: %d\n", obj.symbolTable.symbols[i].segment_offset);
+            printf("\tdefined: %d\n", obj.symbolTable.symbols[i].defined);
+        }
         if (HAVE_PADDING) fseek(f, 11, SEEK_CUR);
     }
 
@@ -70,6 +91,14 @@ struct ObjectFile readObjectFile(const char *filename) {
         fread(&obj.relocationTable.relocations[i].segment_offset, sizeof(obj.relocationTable.relocations[i].segment_offset), 1, f);
         fread(&obj.relocationTable.relocations[i].addend, sizeof(obj.relocationTable.relocations[i].addend), 1, f);
         fread(&obj.relocationTable.relocations[i].type, sizeof(obj.relocationTable.relocations[i].type), 1, f);
+        if (verbose) {
+            printf("Relocation table entry:\n");
+            printf("\tname: %s\n", obj.relocationTable.relocations[i].name);
+            printf("\tsegment_index: %d\n", obj.relocationTable.relocations[i].segment_index);
+            printf("\tsegment_offset: %d\n", obj.relocationTable.relocations[i].segment_offset);
+            printf("\taddend: %d\n", obj.relocationTable.relocations[i].addend);
+            printf("\ttype: %d\n", obj.relocationTable.relocations[i].type);
+        }
         if (HAVE_PADDING) fseek(f, 9, SEEK_CUR);
     }
 

@@ -14,6 +14,7 @@ typedef struct FloppyDisk {
     int sectors;
     int sector_size;
     uint8_t *data;
+    char *filename;
 } FloppyDisk;
 
 enum FDCPhase {
@@ -26,7 +27,7 @@ enum FDCPhase {
 
 typedef struct FDC {
     uint8_t MSR;
-    uint8_t FIFO[512];
+    uint8_t FIFO[16];
     uint8_t DOR;
     uint8_t DIR;
     int fifo_len, fifo_pos;
@@ -41,9 +42,15 @@ typedef struct FDC {
 
     enum FDCPhase phase;
     int args_expected, args_received;
+
+    int current_offset;
+    uint8_t set_int;
 } FDC;
 
 int mount_floppy_disk(FDC *controller, FloppyDisk *floppy_disk, int drive_number);
+
+void write_FDC(FDC *controller, int value, int port);
+uint8_t read_FDC(FDC *controller, int port);
 
 void tick_fdc(FDC *controller);
 

@@ -131,6 +131,50 @@ int find_localSegment(struct SegmentTable *segTable, char name[16]) {
     return -1;
 }
 
+int correct_relax(const struct ObjectFile *objs, const size_t num_files, const uint32_t target_seg, const uint32_t target_offset) {
+    for (int i = 0; i < num_files; i++) {
+        for (int j = 0; j < objs[i].relocationTable.numRelocations; j++) {
+            struct RelocationEntry *entry = &objs[i].relocationTable.relocations[j];
+            if (segmentMap[i][entry->segment_index].global_index != target_seg) {
+                continue;
+            }
+
+            if (entry->segment_offset > target_offset) {
+                entry->segment_offset--;
+            }
+        }
+    }
+
+    for (int i = 0; i < symbol_table_count; i++) {
+        if (symbolTable[i].absolute_address > linkedSegments[target_seg].base_address + target_offset) {
+            symbolTable[i].absolute_address--;
+        }
+    }
+
+    return 0;
+}
+
+void handle_duplicate_symbol(size_t symbol_idx, const struct ObjectFile *objs, size_t file_idx, size_t symbol_table_idx) {
+    struct Symbol *sym = &objs[file_idx].symbolTable.symbols[symbol_table_idx];
+
+    if (symbolTable[symbol_idx].defined == 0) {
+        struct GlobalSymbol *global = &symbolTable[symbol_idx];
+        global->defined = 1;
+
+        uint32_t local_segment = sym->segment_index;
+
+        global->absolute_address = linkedSegments[segmentMap[file_idx][local_segment].global_index].base_address
+                             + segmentMap[file_idx][local_segment].offset_adjust + sym->segment_offset;
+        return;
+    }
+    if (sym->defined == 0) {
+        return;
+    }
+
+    printf("nano8-ld: fatal error: Found duplicate symbol %s\n", sym->name);
+    exit(EXIT_FAILURE);
+}
+
 void linker(const struct ObjectFile *objs, const size_t num_files, char *out, struct MemoryRegion *mem, struct SegmentRule *rules) {
     linkedSegments = malloc(sizeof(struct LinkedSegment) * segment_table_capacity);
     if (!linkedSegments) {
@@ -207,11 +251,13 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
 
     // combine into global symbol table
     for (size_t i = 0; i < num_files; i++) {
-        for (int j = 0; j < objs[i].symbolTable.numSymbols; j++) {
-            if (find_symbol(objs[i].symbolTable.symbols[j].name) != -1) {
-                printf("nano8-ld: fatal error: Found duplicate symbol %s\n", objs[i].symbolTable.symbols[j].name);
-                exit(EXIT_FAILURE);
+        for (size_t j = 0; j < objs[i].symbolTable.numSymbols; j++) {
+            int symbol_idx = find_symbol(objs[i].symbolTable.symbols[j].name);
+            if (symbol_idx != -1) {
+                handle_duplicate_symbol(symbol_idx, objs, i, j);
+                continue;
             }
+
             struct GlobalSymbol sym;
             strcpy(sym.name, objs[i].symbolTable.symbols[j].name);
 
@@ -236,14 +282,42 @@ void linker(const struct ObjectFile *objs, const size_t num_files, char *out, st
             const uint32_t offset_adjust = segmentMap[i][objs[i].relocationTable.relocations[j].segment_index].offset_adjust;
             const uint32_t offset = objs[i].relocationTable.relocations[j].segment_offset;
             const uint32_t target_offset = offset_adjust + offset;
+            const uint8_t type = objs[i].relocationTable.relocations[j].type;
             const int symbol_idx = find_symbol(objs[i].relocationTable.relocations[j].name);
             if (symbol_idx == -1) {
                 printf("nano8-ld: fatal-error: symbol not found %s\n", objs[i].relocationTable.relocations[j].name);
                 exit(EXIT_FAILURE);
             }
             const uint32_t address = symbolTable[symbol_idx].absolute_address + addend;
-            linkedSegments[target_seg].data[target_offset] = address & 0xFF;
-            linkedSegments[target_seg].data[target_offset+1] = address >> 8 & 0xFF;
+            if (type == 0) { // absolute
+                linkedSegments[target_seg].data[target_offset] = address & 0xFF;
+                linkedSegments[target_seg].data[target_offset+1] = address >> 8 & 0xFF;
+            } else if (type == 1) { // relative
+                // abs - current = rel
+                int8_t relative_address = (int8_t)(address - (linkedSegments[target_seg].base_address + target_offset + 1));
+                linkedSegments[target_seg].data[target_offset] = relative_address;
+            } else if (type == 2) { // relax
+                // the idea of relax is when the assembler doesn't know if it should do
+                // relative of absolute relocation it asks the linker please do it for me
+
+                // big thing is all relocations after than need to have their
+                // addresses shifted back to match the new location
+
+                int relative_address = (int)(address - (linkedSegments[target_seg].base_address + target_offset + 1));
+                if (relative_address < -128 || relative_address > 127) { // has to be absolute, real simple
+                    linkedSegments[target_seg].data[target_offset] = address & 0xFF;
+                    linkedSegments[target_seg].data[target_offset+1] = address >> 8 & 0xFF;
+                } else { // is relative
+                    linkedSegments[target_seg].data[target_offset] = (int8_t)relative_address;
+                    // shift all bytes back
+                    memcpy(&linkedSegments[target_seg].data[target_offset+1],
+                        &linkedSegments[target_seg].data[target_offset+2],
+                        linkedSegments[target_seg].size-(target_offset+2));
+                    // update all positional information after the instruction
+                    linkedSegments[target_seg].size--;
+                    correct_relax(objs, num_files, target_seg, offset);
+                }
+            }
         }
     }
 
