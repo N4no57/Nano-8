@@ -481,7 +481,7 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
     if (operands[0].kind == REGISTER && operands[1].kind == INDIRECT_REG) {
         if (operands[1].mem_pair.reg_high == 12) {
             seg->data[seg->size++] = base_opcode + 0b10100000;
-            seg->data[seg->size++] = operands[0].reg;
+            seg->data[seg->size++] = operands[0].reg << 4 & 0xF0;
             seg->data[seg->size++] = operands[1].mem_pair.reg_high << 4 & 0xF0;
             return;
         }
@@ -492,7 +492,7 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
     if (operands[0].kind == REGISTER && operands[1].kind == INDEXED_MEM) {
         if (operands[1].mem_pair.reg_high == 12) {
             seg->data[seg->size++] = base_opcode + 0b10101000;
-            seg->data[seg->size++] = operands[0].reg;
+            seg->data[seg->size++] = operands[0].reg << 4 & 0xF0;
             seg->data[seg->size++] = operands[1].mem_pair.reg_high << 4 & 0xF0;
             seg->data[seg->size++] = operands[1].mem_pair.offset & 0xFF;
             seg->data[seg->size++] = operands[1].mem_pair.offset >> 8 & 0xFF;
@@ -512,7 +512,7 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
         if (operands[0].mem_pair.reg_high == 12) {
             seg->data[seg->size++] = base_opcode + 0b10100100;
             seg->data[seg->size++] = operands[0].mem_pair.reg_high << 4 & 0xF0;
-            seg->data[seg->size++] = operands[1].reg;
+            seg->data[seg->size++] = operands[1].reg << 4 & 0xF0;
             return;
         }
 
@@ -526,7 +526,7 @@ void encode_mov(uint8_t base_opcode, int operand_count, AssemblingSegment *seg, 
             seg->data[seg->size++] = operands[0].mem_pair.reg_high << 4 & 0xF0;
             seg->data[seg->size++] = operands[0].mem_pair.offset & 0xFF;
             seg->data[seg->size++] = operands[0].mem_pair.offset >> 8 & 0xFF;
-            seg->data[seg->size++] = operands[1].reg;
+            seg->data[seg->size++] = operands[1].reg << 4 & 0xF0;
             return;
         }
 
