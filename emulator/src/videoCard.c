@@ -1004,20 +1004,32 @@ int videoCardTick(VideoCard *videoCard) {
     BeginDrawing();
     if (!inBlankingTimer(videoCard)) {
         if ((videoCard->modeRegister & MODE_BIT) == TEXT_MODE) {
-            int char_row = videoCard->verticalCounter / 8;
-            int sub_row = videoCard->verticalCounter % 8;
-            int address = char_row * videoCard->width + videoCard->horizontalCounter;
+            int char_row = videoCard->horizontalCounter / 8;
+            int char_col = videoCard->verticalCounter / 8;
+            int sub_row = videoCard->horizontalCounter % 8;
+            int bit_x = videoCard->horizontalCounter  % 8;
+            int chars_per_row = videoCard->width / 8;
+            int address = char_row * chars_per_row + char_col;
             int page_index = address/PAGE_SIZE;
             int page_offset = address % PAGE_SIZE;
 
             uint8_t character_ascii = videoCard->VRAM[page_index][page_offset];
-            uint8_t glyph = my_8x8_bitmap_chars[character_ascii - 32];
+            // top nibble is foreground, bottom nibble is background
+            uint8_t fore_back_data = videoCard->VRAM[page_index][page_offset+1];
+            uint8_t *glyph = my_8x8_bitmap_chars[character_ascii - 32];
             uint8_t row_bits = glyph[sub_row];
+
+            uint8_t on = row_bits & (1 << (7 - bit_x));
+
+            uint8_t fg_index = (fore_back_data >> 4) & 0x0F;
+            uint8_t bg_index = fore_back_data & 0x0F;
+            uint8_t palette_entry = videoCard->palleteRAM[ on ? fg_index : bg_index ];
 
             Color pixel;
             pixel.a = 255;
-            pixel.r = pixel.g = pixel.b = character;
+            pixel.r = pixel.g = pixel.b = on ? fore_back_data & 0xF0 : fore_back_data & 0x0F;
 
+            DrawPixel(videoCard->horizontalCounter, videoCard->verticalCounter, pixel);
         } else if ((videoCard->modeRegister & MODE_BIT) == BITFIELD_MODE) {
             const int address = videoCard->verticalCounter * videoCard->width + videoCard->horizontalCounter;
             const int page_index = address/PAGE_SIZE;
