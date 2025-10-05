@@ -23,7 +23,7 @@ typedef struct VideoCard {
 
     // internal hardware crap
     uint8_t VRAM[8][PAGE_SIZE]; // pages * page_size = total memory
-    uint8_t palleteRAM[64 * RGB_WIDTH];
+    uint8_t palleteRAM[64];
     uint8_t horizontalCounter; // frame counters
     uint8_t verticalCounter;
     int width, height;
