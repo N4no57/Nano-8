@@ -14,6 +14,7 @@ typedef struct FloppyDisk {
     int sectors;
     int sector_size;
     uint8_t *data;
+    char *filename;
 } FloppyDisk;
 
 enum FDCPhase {

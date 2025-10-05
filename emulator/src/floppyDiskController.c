@@ -4,6 +4,9 @@
 
 #include "../include/floppyDiskController.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #define CMD_NONE 0
 #define CMD_READ 1
 #define CMD_WRITE 2
@@ -29,6 +32,31 @@ int mount_floppy_disk(FDC *controller, FloppyDisk *floppy_disk, const int drive_
         }
     }
     return -1; // no available drive slots
+}
+
+void read_floppy_image(const FDC *controller, const int drive_number) {
+    char *floppy_image = controller->floppy_disks[drive_number]->filename;
+    FILE *f = fopen(floppy_image, "rb");
+    if (f == NULL) { // create the goddamn file
+        f = fopen(floppy_image, "wb");
+        if (f == NULL) {
+            perror("fopen");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    fread(controller->floppy_disks[drive_number]->data, sizeof(uint8_t), controller->floppy_disks[drive_number]->size, f);
+}
+
+void write_floppy_image(const FDC *controller, const int drive_number) {
+    char *floppy_image = controller->floppy_disks[drive_number]->filename;
+    FILE *f = fopen(floppy_image, "wb");
+    if (f == NULL) {
+        printf("Error opening file\n");
+        exit(-1);
+    }
+
+    fwrite(controller->floppy_disks[drive_number]->data, sizeof(uint8_t), controller->floppy_disks[drive_number]->size, f);
 }
 
 void write_FDC(FDC *controller, int value, int port) {
@@ -66,6 +94,7 @@ void write_FDC(FDC *controller, int value, int port) {
                         controller->byte_timer = controller->byte_ticks = 11;
                         controller->ticks_remaining = controller->byte_ticks * 512; // hardcoded val for now
                         controller->phase = PHASE_EXEC;
+                        read_floppy_image(controller, controller->current_drive);
                     }
                     controller->args_received += 1;
                 } else if (controller->current_command == CMD_WRITE) {
@@ -98,7 +127,7 @@ void write_FDC(FDC *controller, int value, int port) {
                 controller->FIFO[write_pos] = value;
                 controller->fifo_len++;
 
-                controller->MSR |= MSR_DRQ;
+                if (controller->fifo_len >= sizeof(controller->FIFO)) controller->MSR &= ~MSR_DRQ;
             }
         break;
     }
@@ -113,6 +142,7 @@ uint8_t read_FDC(FDC *controller, int port) {
             controller->fifo_pos = (controller->fifo_pos + 1) % 16;
             controller->fifo_len--;
             if (controller->fifo_len == 0) controller->MSR &= ~MSR_DRQ;
+            if (controller->phase == PHASE_RESULT) controller->phase = PHASE_CMD;
             return value;
     }
 }
@@ -165,10 +195,14 @@ void tick_fdc(FDC *controller) {
         }
 
         if (controller->ticks_remaining == 0) {
-            controller->phase = PHASE_RESULT;
             controller->MSR &= ~MSR_BUSY;
             controller->set_int = 1;
-            // TODO the rest of the thing maybe???
+            controller->FIFO[0] = 0x00; // success
+            controller->phase = PHASE_RESULT;
+            controller->MSR |= MSR_DRQ;
+            if (controller->current_command == CMD_WRITE) {
+                write_floppy_image(controller, controller->current_drive);
+            }
         }
     }
 }
