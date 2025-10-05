@@ -1,4 +1,5 @@
 #include "../include/memory.h"
+#include "../include/videoCard.h"
 #include <string.h>
 
 void memory_init(Memory *memory) {
