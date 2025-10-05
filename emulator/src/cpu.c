@@ -51,7 +51,7 @@ void set_reg(CPU *cpu, const uint8_t reg, const uint8_t value) {
     }
 }
 
-uint8_t read_reg(const CPU *cpu, const uint8_t reg) {
+uint16_t read_reg(const CPU *cpu, const uint8_t reg) {
     switch (reg) {
         case 0x0: // R0
             return cpu->R0;
@@ -79,10 +79,10 @@ uint8_t read_reg(const CPU *cpu, const uint8_t reg) {
 
 void set_flags(CPU *cpu, const uint16_t value, const uint8_t values[2], const uint8_t mask) {
     // mask = 0b0000, 1 - O, 2 - C, 3 - N, 4 - Z
-    if ((mask & 0b1) == 1) cpu->FR.Z = value == 0;
-    if ((mask & 0b10) == 1) cpu->FR.N = (value & 0x80) != 0;
-    if ((mask & 0b100) == 1) cpu->FR.C = value > 255;
-    if ((mask & 0b1000) == 1) {
+    if (mask & 0b1) cpu->FR.Z = value == 0;
+    if (mask & 0b10) cpu->FR.N = (value & 0x80) != 0;
+    if (mask & 0b100) cpu->FR.C = value > 255;
+    if (mask & 0b1000) {
         if (values[0] > 0 && values[1] > 0) cpu->FR.O = (value & 0x80) != 0;
         else if (values[0] < 0 && values[1] < 0) cpu->FR.O = (value & 0x80) == 0;
     }
@@ -159,6 +159,30 @@ void decode_indreg(CPU *cpu, uint16_t *values) {
 
 void execute_mov(CPU *cpu, const uint8_t instruction) {
     const uint8_t type = instruction & 0b00011100;
+    const uint8_t base_opcode = instruction & 0b11100011;
+    if (base_opcode == MOV_SP) {
+        if (type == 0) { // mov reg, (sp)
+            uint16_t values[2];
+            decode_reg(cpu, values);
+            decode_reg(cpu, &values[1]);
+            const uint8_t val = read_byte(&cpu->memory, read_reg(cpu, values[1]));
+            set_reg(cpu, values[0], val);
+        } else if (type == 0b01 << 2) { // mov (sp), reg
+
+        } else if (type == 0b10 << 2) { // mov reg, [sp±offset]
+            uint16_t values[3];
+            decode_reg(cpu, values);
+            decode_reg(cpu, &values[1]);
+            values[2] = fetch_word(cpu);
+            const uint16_t address = read_reg(cpu, values[1]) + (int16_t)values[2];
+            const uint8_t val = read_byte(&cpu->memory, address);
+            set_reg(cpu, values[0], val);
+        } else if (type == 0b11 << 2) { // mov [sp±offset], reg
+
+        }
+        return;
+    }
+
     if (type == 0) { // mov reg, reg
         uint16_t values[2]; // 0: dest, 1: src
         decode_reg_reg(cpu, values);
@@ -210,13 +234,13 @@ void execute_complexArith(CPU *cpu, const uint8_t instruction, const uint8_t ari
     // 7 - cmp
     const uint8_t type = instruction & 0b00001100;
     uint16_t values[2];
-    int8_t operand[2];
+    int16_t operand[2];
     if (type == 0) { // inst reg_1, reg_2
         decode_reg_reg(cpu, values);
-        operand[1] = (int8_t)read_reg(cpu, values[1]);
+        operand[1] = (int16_t)read_reg(cpu, values[1]);
     } else if (type == 0b01 << 2) { // inst reg, imm
         decode_reg_imm(cpu, values);
-        operand[1] = (int8_t)values[1];
+        operand[1] = (int16_t)values[1];
     }
     operand[0] = read_reg(cpu, values[0]); // NOLINT(*-narrowing-conversions)
     uint16_t result;
@@ -315,7 +339,7 @@ void execute_jmp(CPU *cpu, const uint8_t instruction, uint8_t push_old_pc) {
     }
     if (push_old_pc) {
         cpu->SP += -2;
-        write_word(&cpu->memory, --cpu->SP, address);
+        write_word(&cpu->memory, cpu->SP, address);
     }
 }
 
@@ -379,6 +403,9 @@ void exec_inst(CPU *cpu) {
                 uint8_t imm = fetch_byte(cpu);
                 port_write(cpu, portout, imm);
             }
+            break;
+        case MOV_SP:
+            execute_mov(cpu, instruction);
             break;
         case ADD:
             execute_complexArith(cpu, instruction, 0, 0b1111);
@@ -471,6 +498,7 @@ void exec_inst(CPU *cpu) {
             cpu->FR.I = 0;
             break;
         case STI:
+            cpu->ports[0] = fetch_byte(cpu);
             cpu->FR.I = 1;
             break;
         case IRET: // TODO
