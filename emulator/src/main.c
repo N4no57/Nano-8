@@ -3,6 +3,17 @@
 
 #include "../include/cpu.h"
 #include "../include/emulatorTests.h"
+#include "../include/videoCard.h"
+
+void init_paletteRAM(VideoCard *card) {
+    uint8_t palette[64] = {0};
+
+    for (int i = 0; i < sizeof(palette); i++) {
+        palette[i] = i;
+    }
+
+    memcpy(card->palleteRAM, palette, sizeof(palette));
+}
 
 int main() {
     //test_emulator();
@@ -29,15 +40,36 @@ int main() {
 
     mount_floppy_disk(&cpu.floppy_controller, &disk, 0);
 
-
-
     FILE *f = fopen("rombin.bin", "rb");
     fread(&cpu.memory.data[0x8000], 1, 0xFFFF-0x8000, f);
 
     reset(&cpu);
 
+    VideoCard video_card;
+
+    video_card.width = 320;
+    video_card.height = 200;
+
+    video_card.modeRegister = 0;
+
+    videoCardInit(&video_card);
+    init_paletteRAM(&video_card);
+
+    unsigned char str[] = "Hello World!";
+    uint8_t color_entry = 0b11110000;
+    uint16_t entry[strlen(str)];
+
+    for (int i = 0; i < strlen(str); i++) {
+        entry[i] = str[i] | color_entry << 8;
+    }
+
+    memcpy(&video_card.VRAM[0][0], entry, sizeof(entry));
+
+    video_card.palleteRAM[0b00001111] = 0xFF;
+
     while (1) {
         tick_fdc(&cpu.floppy_controller);
+        videoCardTick(&video_card);
         exec_inst(&cpu);
     }
   return 0;

@@ -95,6 +95,9 @@ l5:
 	inb r0, MSR
 	ret
 
+putchar:
+	; do something
+
 
 .segment code
 

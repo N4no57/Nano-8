@@ -4,10 +4,15 @@
 
 #include "../include/videoCard.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 #define TEXT_MODE 0
 #define BITFIELD_MODE 1
 
 #define MODE_BIT 0b00000001
+
+#define SCALE 6
 
 // hardcoded glyphs
 
@@ -979,13 +984,25 @@ static const unsigned char my_8x8_bitmap_chars[][8] = {
     },
 };
 
+RenderTexture2D target;
+
 // actual video card stuff
 int videoCardInit(VideoCard *videoCard) {
+    videoCard->framebuffer = malloc(videoCard->width * videoCard->height * sizeof(Color));
+    memset(videoCard->framebuffer, 0, videoCard->width * videoCard->height * 4);
 
-    InitWindow(videoCard->width, videoCard->height, "nano8-screen");
+    InitWindow(videoCard->width * SCALE, videoCard->height * SCALE, "nano8-screen");
     SetTargetFPS(60);
+
+    target = LoadRenderTexture(videoCard->width, videoCard->height);
+    SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
+
     videoCard->verticalCounter = 0;
     videoCard->horizontalCounter = 0;
+    videoCard->hBlank = (int)(videoCard->width * 0.2);
+    videoCard->vBlank = (int)(videoCard->height * 0.2);
+    videoCard->VRAMpage = videoCard->VRAM[0];
+    videoCard->indexRegister = 0;
 
     return 0;
 }
@@ -1000,17 +1017,31 @@ int inBlankingTimer(VideoCard *videoCard) {
     return 0;
 }
 
-int videoCardTick(VideoCard *videoCard) {
+void drawToScreen(VideoCard *videoCard) {
     BeginDrawing();
+
+    DrawTexturePro(
+        target.texture,
+        (Rectangle){0, 0, (float)videoCard->width, (float)videoCard->height},
+        (Rectangle){0, 0, (float)videoCard->width * SCALE, (float)videoCard->height * SCALE},
+        (Vector2){0, 0},
+        0.0f,
+        WHITE
+    );
+
+    EndDrawing();
+}
+
+int videoCardTick(VideoCard *videoCard) {
     if (!inBlankingTimer(videoCard)) {
         if ((videoCard->modeRegister & MODE_BIT) == TEXT_MODE) {
-            const int char_row = videoCard->verticalCounter  / 8;
-            const int char_col = videoCard->horizontalCounter  / 8;
-            const int sub_row = videoCard->verticalCounter  % 8;
-            const int bit_x = videoCard->horizontalCounter  % 8;
+            const int char_row = videoCard->verticalCounter / 8;
+            const int char_col = videoCard->horizontalCounter / 8;
+            const int sub_row = videoCard->verticalCounter % 8;
+            const int bit_x = videoCard->horizontalCounter % 8;
             const int chars_per_row = videoCard->width / 8;
-            const int address = char_row * chars_per_row + char_col;
-            const int page_index = address/PAGE_SIZE;
+            const int address = (char_row * chars_per_row + char_col) * 2;
+            const int page_index = address / PAGE_SIZE;
             const int page_offset = address % PAGE_SIZE;
 
             const uint8_t character_ascii = videoCard->VRAM[page_index][page_offset];
@@ -1030,13 +1061,12 @@ int videoCardTick(VideoCard *videoCard) {
             const uint8_t G = (palette_entry >> 2) & 0x03;
             const uint8_t B = palette_entry & 0x03;
 
-            Color pixel;
-            pixel.a = 255;
-            pixel.r = R * 85;
-            pixel.g = G * 85;
-            pixel.b = B * 85;
+            uint32_t index = videoCard->verticalCounter * videoCard->width + videoCard->horizontalCounter;
 
-            DrawPixel(videoCard->horizontalCounter, videoCard->verticalCounter, pixel);
+            videoCard->framebuffer[index].r = R * 0x55;
+            videoCard->framebuffer[index].g = G * 0x55;
+            videoCard->framebuffer[index].b = B * 0x55;
+            videoCard->framebuffer[index].a = 0xFF;
         } else if ((videoCard->modeRegister & MODE_BIT) == BITFIELD_MODE) {
             const int address = videoCard->verticalCounter * videoCard->width + videoCard->horizontalCounter;
             const int page_index = address/PAGE_SIZE;
@@ -1049,25 +1079,23 @@ int videoCardTick(VideoCard *videoCard) {
             const uint8_t G = (RGB >> 2) & 0x03;
             const uint8_t B = RGB & 0x03;
 
-            Color pixel;
-            pixel.a = 255;
-            pixel.r = R * 85;
-            pixel.g = G * 85;
-            pixel.b = B * 85;
-
-            DrawPixel(videoCard->horizontalCounter, videoCard->verticalCounter, pixel);
+            videoCard->framebuffer[address].r = R * 0x55;
+            videoCard->framebuffer[address].g = G * 0x55;
+            videoCard->framebuffer[address].b = B * 0x55;
+            videoCard->framebuffer[address].a = 0xFF;
         }
     }
-    EndDrawing();
 
     videoCard->horizontalCounter++;
     if (videoCard->horizontalCounter >= videoCard->width + videoCard->hBlank) {
-        videoCard->horizontalCounter = 0;
         videoCard->verticalCounter++;
+        videoCard->horizontalCounter = 0;
     }
 
     if (videoCard->verticalCounter >= videoCard->height + videoCard->vBlank) {
         videoCard->verticalCounter = 0;
+        UpdateTexture(target.texture, videoCard->framebuffer);
+        drawToScreen(videoCard);
     }
 
     return 0;
