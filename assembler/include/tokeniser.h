@@ -16,6 +16,7 @@ typedef enum {
     TOKEN_LABEL,
     TOKEN_SYMBOL,
     TOKEN_DIRECTIVE,
+    TOKEN_STRING,
     TOKEN_EOF
 } TokenType;
 

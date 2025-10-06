@@ -211,6 +211,12 @@ void first_pass(TokenList *tokens, SymbolTable *symbol_table, AssemblingSegmentT
 				current_segment->size+=8;
 				continue;
 			}
+			if (strcmp(current_token.str_val, ".ascii") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				current_segment->size += strlen(current_token.str_val) + 1;
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
 			if (strcmp(current_token.str_val, ".segment") == 0) {
 				consume_token(&tok_idx, &current_token, tokens);
 				char segName[16];
@@ -437,6 +443,26 @@ void second_pass(const TokenList *tokens, SymbolTable *table, const AssemblingSe
 				current_segment->data[current_segment->size++] = current_token.int_value >> 40 & 0xFF;
 				current_segment->data[current_segment->size++] = current_token.int_value >> 48 & 0xFF;
 				current_segment->data[current_segment->size++] = current_token.int_value >> 56 & 0xFF;
+				consume_token(&tok_idx, &current_token, tokens);
+				continue;
+			}
+			if (strcmp(current_token.str_val, ".ascii") == 0) {
+				consume_token(&tok_idx, &current_token, tokens);
+				size_t base_address = current_segment->size;
+				current_segment->size += strlen(current_token.str_val) + 1;
+
+				if (current_segment->size >= current_segment->capacity) {
+					current_segment->capacity += strlen(current_token.str_val) + 1;
+					current_segment->capacity *= 2;
+					uint8_t *temp = realloc(current_segment->data, current_segment->capacity);
+					if (!temp) {
+						fprintf(stderr, "Error: out of memory\n");
+						exit(1);
+					}
+					current_segment->data = temp;
+				}
+
+				memcpy(&current_segment->data[base_address], current_token.str_val, strlen(current_token.str_val) + 1);
 				consume_token(&tok_idx, &current_token, tokens);
 				continue;
 			}

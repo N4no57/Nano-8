@@ -229,6 +229,21 @@ TokenList tokenise(char **lines) {
                 continue;
             }
 
+            if (line[i] == '"') {
+                i++;
+                char buff[64]; int bi = 0;
+                while (line[i] != '"') {
+                    buff[bi++] = line[i++];
+                }
+                buff[bi] = '\0';
+                i++;
+
+                Token t = { TOKEN_STRING};
+                t.str_val = strdup(buff);
+                token_list_push(&token_list, t);
+                continue;
+            }
+
             // identifier (mnemonic, register, label, directive)
             if (isalpha(line[i]) || line[i] == '.') {
                 char buff[64]; int bi = 0;
