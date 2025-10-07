@@ -53,23 +53,12 @@ int main() {
     video_card.modeRegister = 0;
 
     videoCardInit(&video_card);
-    init_paletteRAM(&video_card);
 
-    unsigned char str[] = "Hello World!";
-    uint8_t color_entry = 0b11110000;
-    uint16_t entry[strlen(str)];
-
-    for (int i = 0; i < strlen(str); i++) {
-        entry[i] = str[i] | color_entry << 8;
-    }
-
-    memcpy(&video_card.VRAM[0][0], entry, sizeof(entry));
-
-    video_card.palleteRAM[0b00001111] = 0xFF;
+    cpu.card = video_card;
 
     while (1) {
         tick_fdc(&cpu.floppy_controller);
-        videoCardTick(&video_card);
+        videoCardTick(&cpu.card);
         exec_inst(&cpu);
     }
   return 0;

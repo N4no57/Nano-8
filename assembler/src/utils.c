@@ -130,29 +130,63 @@ ParsedOperand parseLabel(const TokenList *tokens, SymbolTable *symbol_table, int
         consume_token(tok_idx, current_tok, tokens);
         result.imm = cs.value;
         result.kind = ABSOLUTE;
+
+        int16_t addend = 0;
+        if (current_tok->type == TOKEN_SYMBOL
+        && (current_tok->str_val[0] == '+' || current_tok->str_val[0] == '-')) {
+            char sign = current_tok->str_val[0];
+            consume_token(tok_idx, current_tok, tokens);
+            if (current_tok->type == TOKEN_NUMBER) {
+                addend = (int16_t)current_tok->int_value;
+                if (sign == '-') addend *= -1;
+                consume_token(tok_idx, current_tok, tokens);
+            } else {
+                printf("oh no no bueno\n");
+            }
+        }
+
+        result.imm += addend;
+
         return result;
     }
 
     // fallback on symbol table
-    Symbol s;
-    if (find_symbol(symbol_table, label, &s) == -1 && isPassTwo == true) {
+    Symbol s = {0};
+    int sym_idx = find_symbol(symbol_table, label, &s);
+
+    if (sym_idx == -1) {
         add_symbol(symbol_table, &current_seg, current_tok->str_val, current_seg.size);
         symbol_table->data[symbol_table->count-1].defined = DEFINED_FALSE;
         s = symbol_table->data[symbol_table->count-1];
     }
+
     consume_token(tok_idx, current_tok, tokens);
+
     int16_t addend = 0;
     if (current_tok->type == TOKEN_SYMBOL
-        && current_tok->str_val[0] == '+' || current_tok->str_val[0] == '-') {
+        && (current_tok->str_val[0] == '+' || current_tok->str_val[0] == '-')) {
         char sign = current_tok->str_val[0];
         consume_token(tok_idx, current_tok, tokens);
         if (current_tok->type == TOKEN_NUMBER) {
             addend = (int16_t)current_tok->int_value;
             if (sign == '-') addend *= -1;
+            consume_token(tok_idx, current_tok, tokens);
         }
     }
 
     uint8_t type = RELOC_ABSOLUTE;
+
+    if (s.defined == DEFINED_FALSE || s.segment == NULL) {
+        if (reloc_table) {
+            relocationTableAppend(reloc_table, s.label,
+                get_segment_index(segTable, &current_seg),
+                current_seg.size, addend, RELOC_RELAX
+            );
+        }
+        result.kind = 3;
+        result.imm = 0x7FFFFFFF;
+    }
+
     if (strcmp(mnemonic.str_val, "call") == 0 || strcmp(mnemonic.str_val, "jmp") == 0) {
         int32_t offset = (int32_t)(s.offset - (current_seg.size+1));
         const uint32_t current_seg_idx = get_segment_index(segTable, &current_seg);
